@@ -8,8 +8,27 @@ class URL:
     port: int
     
     def __init__(self, url: str):
-        self.scheme, url = url.split("://", 1)
-        assert self.scheme in ("http", "https")
+        tokens = url.split("://", 1)
+        if len(tokens) == 1:
+            if url.startswith("/"):
+                self.scheme = "file"
+            else:
+                raise ValueError("Invalid URL: {}".format(url))
+        else:
+            self.scheme, url = url.split("://", 1)
+            print(self.scheme, url)
+            # if scheme is not specified and starts with "/", assume file scheme
+
+            assert self.scheme in ("http", "https", "file")
+
+        if self.scheme == "file":
+            if url.startswith("//"):
+                url = url[2:]
+            # if url not starts with "/", add it
+            if not url.startswith("/"):
+                url = "/" + url
+            self.path = url
+            return
 
         if "/" not in url:
             url = url + "/"
@@ -26,6 +45,17 @@ class URL:
             self.port = int(port)
 
     def request(self):
+        if self.scheme == "file":
+            return self._request_file()
+        else:
+            return self._request_http()
+
+    
+    def _request_file(self):
+        with open(self.path, "r") as f:
+            return f.read()
+
+    def _request_http(self):
         s = socket.socket(
             family=socket.AF_INET,
             type=socket.SOCK_STREAM,
