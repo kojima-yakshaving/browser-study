@@ -1,14 +1,17 @@
 import sys
-from renderer import Renderer
+from renderer import RenderMode, Renderer
 from url import URL
 
 
-def show(body):
-    Renderer(body).render()
+def show(body, *, render_mode: RenderMode):
+    Renderer(
+        content = body, 
+        render_mode = render_mode
+    ).render()
 
 def load(url):
     body = url.request()
-    show(body)
+    show(body,  render_mode=RenderMode.RAW if url.show_raw else RenderMode.RENDERED)
 
 
 if __name__ == "__main__":

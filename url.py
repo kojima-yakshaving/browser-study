@@ -9,8 +9,14 @@ class URL:
     port: int
 
     content: Optional[str]
+
+    show_raw: bool = False
     
     def __init__(self, url: str):
+        if url.startswith('view-source:'):
+            self.show_raw = True
+            url = url[len('view-source:'):]
+
         if url.startswith("data:"):
             self.scheme = "data"
             content = url.split(",", 1)[1]
@@ -19,14 +25,13 @@ class URL:
 
         tokens = url.split("://", 1)
         if len(tokens) == 1:
+            # if scheme is not specified and starts with "/", assume file scheme
             if url.startswith("/"):
                 self.scheme = "file"
             else:
                 raise ValueError("Invalid URL: {}".format(url))
         else:
             self.scheme, url = url.split("://", 1)
-            print(self.scheme, url)
-            # if scheme is not specified and starts with "/", assume file scheme
 
             assert self.scheme in ("http", "https", "file")
 

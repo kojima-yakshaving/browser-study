@@ -1,6 +1,11 @@
 from enum import Enum
 
 
+class RenderMode(Enum):
+    RAW = 1 
+    RENDERED = 2
+
+
 class RecognitionOutput(Enum):
     CONTINUE = 1
     FLUSH = 2
@@ -66,11 +71,17 @@ class Renderer:
     renders contents of websites which is passed as a string
     """
     content: str
+    render_mode: RenderMode
 
-    def __init__(self, content: str):
+    def __init__(self, *, content: str, render_mode: RenderMode = RenderMode.RENDERED):
         self.content = content 
+        self.render_mode = render_mode
 
     def render(self):
+        if self.render_mode == RenderMode.RAW:
+            print(self.content)
+            return
+
         recognizer = EntityRecognizer([])
         result = RecognitionOutput.CONTINUE
         in_tag = False
