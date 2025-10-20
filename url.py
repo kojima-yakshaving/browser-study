@@ -1,13 +1,22 @@
 import socket
 import ssl
+from typing import Optional
 
 class URL:
     scheme: str
     path: str 
     host: str
     port: int
+
+    content: Optional[str]
     
     def __init__(self, url: str):
+        if url.startswith("data:"):
+            self.scheme = "data"
+            content = url.split(",", 1)[1]
+            self.content = content
+            return
+
         tokens = url.split("://", 1)
         if len(tokens) == 1:
             if url.startswith("/"):
@@ -45,11 +54,15 @@ class URL:
             self.port = int(port)
 
     def request(self):
+        if self.scheme == "data":
+            return self._request_data_content()
         if self.scheme == "file":
             return self._request_file()
         else:
             return self._request_http()
 
+    def _request_data_content(self):
+        return self.content
     
     def _request_file(self):
         with open(self.path, "r") as f:
