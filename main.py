@@ -4,10 +4,12 @@ from url import URL
 
 
 def show(body, *, render_mode: RenderMode):
-    Renderer(
-        content = body, 
-        render_mode = render_mode
-    ).render()
+    print(
+        Renderer(
+            content = body, 
+            render_mode = render_mode
+        ).render()
+    )
 
 def load(url):
     body = url.request()

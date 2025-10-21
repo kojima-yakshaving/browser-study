@@ -77,10 +77,9 @@ class Renderer:
         self.content = content 
         self.render_mode = render_mode
 
-    def render(self):
+    def render(self) -> str:
         if self.render_mode == RenderMode.RAW:
-            print(self.content)
-            return
+            return self.content
 
         recognizer = EntityRecognizer([])
         result = RecognitionOutput.CONTINUE
@@ -109,5 +108,5 @@ class Renderer:
         flushed = recognizer.flush()
         buffer.append(flushed)
 
-        print("".join(buffer))
+        return "".join(buffer)
         
