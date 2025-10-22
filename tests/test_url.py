@@ -13,6 +13,6 @@ def test_data_scheme():
 
 def test_view_source_scheme():
     url = URL("view-source:http://example.com")
-    assert url.show_raw
+    assert url.view_source
     assert url.scheme == "http"
     assert url.host == "example.com"

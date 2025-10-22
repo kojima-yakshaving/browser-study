@@ -13,7 +13,7 @@ def show(body, *, render_mode: RenderMode):
 
 def load(url):
     body = url.request()
-    show(body,  render_mode=RenderMode.RAW if url.show_raw else RenderMode.RENDERED)
+    show(body,  render_mode=RenderMode.RAW if url.view_source else RenderMode.RENDERED)
 
 
 if __name__ == "__main__":

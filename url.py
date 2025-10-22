@@ -10,11 +10,11 @@ class URL:
 
     content: Optional[str]
 
-    show_raw: bool = False
+    view_source: bool = False
     
     def __init__(self, url: str):
         if url.startswith('view-source:'):
-            self.show_raw = True
+            self.view_source = True
             url = url[len('view-source:'):]
 
         if url.startswith("data:"):
