@@ -13,7 +13,7 @@ def show(body, *, render_mode: RenderMode):
     )
 
 def load(url):
-    connection = Connection()
+    connection = Connection(http_options={'http_version': '1.1'})
     body = connection.request(url=url)
     show(body,  render_mode=RenderMode.RAW if url.view_source else RenderMode.RENDERED)
 

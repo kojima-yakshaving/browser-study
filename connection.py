@@ -1,6 +1,6 @@
 from socket import socket as Socket, AF_INET, SOCK_STREAM, IPPROTO_TCP
 import ssl
-from typing import Literal, Optional, TypedDict
+from typing import ClassVar, Dict, Literal, NamedTuple, Optional, TypedDict
 
 from url import URL
 
@@ -9,7 +9,14 @@ class HttpOptions(TypedDict):
     http_version: Optional[Literal["1.0", "1.1"]]
 
 
+class ConnectionPoolCacheKey(NamedTuple):
+    host: str 
+    port: int
+
+
 class Connection:
+    connection_pool: ClassVar[Dict[ConnectionPoolCacheKey, Socket]] = {}
+
     socket: Optional[Socket]
     http_options: HttpOptions
 
@@ -25,15 +32,30 @@ class Connection:
             return f.read()
 
     def _request_http(self, url: URL, http_options: HttpOptions) -> str:
-        self.socket = Socket(
-            family=AF_INET,
-            type=SOCK_STREAM,
-            proto=IPPROTO_TCP
-        )
-        self.socket.connect((url.host, url.port))
-        if url.scheme == "https":
-            ctx = ssl.create_default_context()
-            self.socket = ctx.wrap_socket(self.socket, server_hostname=url.host)
+        if http_options['http_version'] not in ("1.0", "1.1"):
+            raise ValueError("Unsupported HTTP version")
+
+        if http_options['http_version'] == '1.1': 
+            key = ConnectionPoolCacheKey(host=url.host, port=url.port)
+            if key in Connection.connection_pool:
+                self.socket = Connection.connection_pool[key]
+
+        if self.socket is None:
+            self.socket = Socket(
+                family=AF_INET,
+                type=SOCK_STREAM,
+                proto=IPPROTO_TCP
+            )
+
+            self.socket.connect((url.host, url.port))
+            if url.scheme == "https":
+                ctx = ssl.create_default_context()
+                self.socket = ctx.wrap_socket(self.socket, server_hostname=url.host)
+
+        if http_options['http_version'] == "1.1":
+            key = ConnectionPoolCacheKey(host=url.host, port=url.port)
+            if key not in Connection.connection_pool:
+                Connection.connection_pool[key] = self.socket
 
         request = f"GET {url.path} HTTP/{http_options['http_version']}\r\n"
         request += f"Host: {url.host}\r\n"
@@ -59,7 +81,13 @@ class Connection:
             header, value = line.split(":", 1)
             response_headers[header.casefold()] = value.strip()
 
-        content = response.read()
+        content = ""
+        if 'content-length' in response_headers:
+            content_length = int(response_headers['content-length'])
+            content = response.read(content_length)
+        else:
+            content = response.read()
+
         if http_options['http_version'] == "1.0":
             self.socket.close()
 
