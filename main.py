@@ -1,5 +1,6 @@
 import sys
 from renderer import RenderMode, Renderer
+from connection import Connection
 from url import URL
 
 
@@ -12,7 +13,8 @@ def show(body, *, render_mode: RenderMode):
     )
 
 def load(url):
-    body = url.request()
+    connection = Connection()
+    body = connection.request(url=url)
     show(body,  render_mode=RenderMode.RAW if url.view_source else RenderMode.RENDERED)
 
 
