@@ -69,13 +69,13 @@ class Connection:
 
         self.socket.send(request.encode("utf-8"))
 
-        response = self.socket.makefile("r", encoding="utf-8", newline="\r\n")
-        statusline = response.readline()
+        response = self.socket.makefile("rb", encoding="utf-8", newline="\r\n")
+        statusline = response.readline().decode("utf-8")
         version, status, explanation = statusline.split(" ", 2)
 
         response_headers = {}
         while True:
-            line = response.readline()
+            line = response.readline().decode("utf-8")
             if line == "\r\n": 
                 break
             header, value = line.split(":", 1)
