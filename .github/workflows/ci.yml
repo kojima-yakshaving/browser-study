@@ -15,4 +15,4 @@ jobs:
         uses: astral-sh/setup-uv@v2
 
       - name: Run CI test suite
-        run: uv run pytest -m ci
+        run: uv run --with pytest pytest -m ci
