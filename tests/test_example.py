@@ -1,2 +1,6 @@
+import pytest
+
+
+@pytest.mark.ci
 def test_example_function():
     assert 1 + 1 == 2
