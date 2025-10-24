@@ -120,6 +120,7 @@ class Connection:
             elif http_options['http_version'] == "1.0":
                 request += "Connection: close\r\n"
             request += "User-Agent: kokokokojima/1.0\r\n"
+            request += "Accept-Encoding: *\r\n"
             request += "\r\n"
 
             self.socket.send(request.encode("utf-8"))
@@ -158,7 +159,13 @@ class Connection:
             content = response.read(content_length).decode("utf-8")
         elif 'transfer-encoding' in response_headers and response_headers['transfer-encoding'].lower() == 'chunked':
             chunked_data = self._read_chunked_body(response)
-            content = chunked_data.decode("utf-8")
+            # Handle gzip encoding if present
+            if 'content-encoding' in response_headers and response_headers['content-encoding'].lower() == 'gzip':
+                import gzip
+                decompressed_data = gzip.decompress(chunked_data)
+                content = decompressed_data.decode("utf-8")
+            else:
+                content = chunked_data.decode("utf-8")
         else:
             content = response.read().decode("utf-8")
 
