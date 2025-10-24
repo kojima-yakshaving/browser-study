@@ -13,11 +13,15 @@ class ConnectionPoolCacheKey(NamedTuple):
     host: str 
     port: int
 
-
 class Connection:
     """
     A connection to handle HTTP/HTTPS requests with support for connection pooling.
     """
+
+    # Maximum number of redirects to follow
+    #
+    # See chromiums's implmentation: https://chromium.googlesource.com/chromium/src/+/refs/heads/main/net/url_request
+    MAX_REDIRECTS = 20
 
     connection_pool: ClassVar[Dict[ConnectionPoolCacheKey, Socket]] = {}
 
@@ -43,54 +47,77 @@ class Connection:
             key = ConnectionPoolCacheKey(host=url.host, port=url.port)
             if key in Connection.connection_pool:
                 self.socket = Connection.connection_pool[key]
-
-        if self.socket is None:
-            self.socket = Socket(
-                family=AF_INET,
-                type=SOCK_STREAM,
-                proto=IPPROTO_TCP
-            )
-
-            self.socket.connect((url.host, url.port))
-            if url.scheme == "https":
-                ctx = ssl.create_default_context()
-                self.socket = ctx.wrap_socket(self.socket, server_hostname=url.host)
-
-        if http_options['http_version'] == "1.1":
-            key = ConnectionPoolCacheKey(host=url.host, port=url.port)
-            if key not in Connection.connection_pool:
-                Connection.connection_pool[key] = self.socket
-
-        request = f"GET {url.path} HTTP/{http_options['http_version']}\r\n"
-        request += f"Host: {url.host}\r\n"
-
-        if http_options['http_version'] == "1.1":
-            request += "Connection: keep-alive\r\n"
-        elif http_options['http_version'] == "1.0":
-            request += "Connection: close\r\n"
-        request += "User-Agent: kokokokojima/1.0\r\n"
-        request += "\r\n"
-
-        self.socket.send(request.encode("utf-8"))
-
-        response = self.socket.makefile("rb", encoding="utf-8", newline="\r\n")
-        statusline = response.readline().decode("utf-8")
-        version, status, explanation = statusline.split(" ", 2)
-
+        
         response_headers = {}
+        redirect_count = 0
+
         while True:
-            line = response.readline().decode("utf-8")
-            if line == "\r\n": 
-                break
-            header, value = line.split(":", 1)
-            response_headers[header.casefold()] = value.strip()
+            if redirect_count > self.MAX_REDIRECTS:
+                raise RuntimeError("Maximum redirect limit reached")
+
+            if self.socket is None:
+                self.socket = Socket(
+                    family=AF_INET,
+                    type=SOCK_STREAM,
+                    proto=IPPROTO_TCP
+                )
+
+                self.socket.connect((url.host, url.port))
+                if url.scheme == "https":
+                    ctx = ssl.create_default_context()
+                    self.socket = ctx.wrap_socket(self.socket, server_hostname=url.host)
+
+            if http_options['http_version'] == "1.1":
+                key = ConnectionPoolCacheKey(host=url.host, port=url.port)
+                if key not in Connection.connection_pool:
+                    Connection.connection_pool[key] = self.socket
+
+            request = f"GET {url.path} HTTP/{http_options['http_version']}\r\n"
+            request += f"Host: {url.host}\r\n"
+
+            if http_options['http_version'] == "1.1":
+                request += "Connection: keep-alive\r\n"
+            elif http_options['http_version'] == "1.0":
+                request += "Connection: close\r\n"
+            request += "User-Agent: kokokokojima/1.0\r\n"
+            request += "\r\n"
+
+            self.socket.send(request.encode("utf-8"))
+
+            response = self.socket.makefile("rb", encoding="utf-8", newline="\r\n")
+            statusline = response.readline().decode("utf-8")
+            version, status, explanation = statusline.split(" ", 2)
+
+            response_headers = {}
+            while True:
+                line = response.readline().decode("utf-8")
+                if line == "\r\n": 
+                    break
+                header, value = line.split(":", 1)
+                response_headers[header.casefold()] = value.strip()
+
+            if status.startswith("3") and 'location' in response_headers:
+                if response_headers['location'].startswith("http://") or response_headers['location'].startswith("https://"):
+                    # absolute redirect
+                    url = URL(response_headers['location'])
+                else:
+                    # relative redirect
+                    url = URL(url.scheme + "://" + url.host + f":{url.port}" + response_headers['location'])
+                redirect_count += 1
+
+                # Close the socket for HTTP/1.0 connections on redirect (not persistent)
+                self.socket.close()
+                self.socket = None
+                continue 
+
+            break
 
         content = ""
         if 'content-length' in response_headers:
             content_length = int(response_headers['content-length'])
-            content = response.read(content_length)
+            content = response.read(content_length).decode("utf-8")
         else:
-            content = response.read()
+            content = response.read().decode("utf-8")
 
         if http_options['http_version'] == "1.0":
             self.socket.close()
