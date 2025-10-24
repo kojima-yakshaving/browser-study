@@ -1,3 +1,5 @@
+from datetime import datetime
+from math import ceil
 from typing import AsyncGenerator, Optional
 
 import gzip
@@ -24,8 +26,9 @@ def chunk_bytes(data: bytes, chunk_size: int = 16) -> AsyncGenerator[bytes, None
 
 
 @app.get("/cache")
-async def cache_endpoint(mode: Optional[str] = None) -> PlainTextResponse:
-    body = "Hello Cache"
+def cache_endpoint(mode: Optional[str] = None) -> PlainTextResponse:
+    timestamp = datetime.now().timestamp()
+    body = f"Hello Cache! Time: {timestamp}".encode("utf-8")
     response = PlainTextResponse(body)
     if mode == "max-age":
         cache_value = "public, max-age=10"
@@ -34,7 +37,6 @@ async def cache_endpoint(mode: Optional[str] = None) -> PlainTextResponse:
     else:
         cache_value = "public, max-age=5"
     response.headers["Cache-Control"] = cache_value  # Controls how the browser caches this resource.
-    response.headers["ETag"] = '"v1.0"'  # Static validator to test conditional requests.
     return response
 
 
