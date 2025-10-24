@@ -15,5 +15,7 @@ dev = [
 [dependency-groups]
 dev = [
     "fastapi>=0.120.0",
+    "pytest>=8.4.2",
+    "pytest-watch>=4.2.0",
     "uvicorn>=0.38.0",
 ]
