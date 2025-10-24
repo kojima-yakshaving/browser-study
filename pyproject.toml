@@ -15,4 +15,5 @@ dev = [
 [dependency-groups]
 dev = [
     "fastapi>=0.120.0",
+    "uvicorn>=0.38.0",
 ]
