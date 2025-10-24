@@ -37,6 +37,7 @@ def cache_endpoint(mode: Optional[str] = None) -> PlainTextResponse:
     else:
         cache_value = "public, max-age=5"
     response.headers["Cache-Control"] = cache_value  # Controls how the browser caches this resource.
+    response.headers['Connection'] = 'close'  # Ensure the server closes the connection after the response.
     return response
 
 
