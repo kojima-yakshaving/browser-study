@@ -55,11 +55,26 @@ async def gzip_endpoint(request: Request):
     return PlainTextResponse(body.decode("utf-8"))
 
 
+for i in reversed(range(21)):
+    @app.get("/redirect/{i}")
+    async def redirect_endpoint(i: int) -> JSONResponse:
+        if i > 0:
+            return JSONResponse(
+                {"redirect": f"/redirect/{i - 1}"},
+                status_code=302,
+                headers={"Location": f"/redirect/{i - 1}"},
+            )
+        return JSONResponse({"message": "Final destination reached."})
+
+
 @app.get("/headers")
 async def headers_endpoint(request: Request) -> JSONResponse:
     # Expose all incoming headers for debugging requests from the custom browser.
     return JSONResponse(dict(request.headers))
 
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 # Usage:
 # uv run server.py
