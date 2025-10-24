@@ -11,3 +11,8 @@ dev = [
     "pytest",
     "pytest-watch",
 ]
+
+[dependency-groups]
+dev = [
+    "fastapi>=0.120.0",
+]
