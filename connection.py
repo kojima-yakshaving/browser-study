@@ -119,8 +119,14 @@ class Connection:
         else:
             content = response.read().decode("utf-8")
 
-        if http_options['http_version'] == "1.0":
+        if (
+            http_options['http_version'] == "1.0" or 
+            ('connection' in response_headers and response_headers['connection'].lower() == 'close')
+        ):
             self.socket.close()
+            self.socket = None 
+            Connection.connection_pool.pop(ConnectionPoolCacheKey(host=url.host, port=url.port), None)
+
 
         return content
 
