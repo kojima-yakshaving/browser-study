@@ -1,4 +1,5 @@
 from datetime import datetime
+from io import BufferedReader
 from socket import socket as Socket, AF_INET, SOCK_STREAM, IPPROTO_TCP
 import ssl
 from typing import ClassVar, Dict, Literal, NamedTuple, Optional, TypedDict
@@ -44,6 +45,20 @@ class Connection:
     def __init__(self, http_options: Optional[HttpOptions] = None):
         self.socket = None 
         self.http_options = http_options or { "http_version": "1.0" }
+
+    def _read_chunked_body(self, response: BufferedReader) -> bytes:
+        body = b""
+        while True:
+            chunk_size_line = response.readline()
+            chunk_size_str = chunk_size_line.split(b"\r\n")[0]
+            chunk_size = int(chunk_size_str, 16)
+            if chunk_size == 0:
+                break
+            chunk_data = response.read(chunk_size)
+            body += chunk_data
+            response.read(2)  # Read the trailing CRLF
+
+        return body
 
     def _request_data(self, url: URL) -> str:
         return url.content or ""
@@ -141,6 +156,9 @@ class Connection:
         if 'content-length' in response_headers:
             content_length = int(response_headers['content-length'])
             content = response.read(content_length).decode("utf-8")
+        elif 'transfer-encoding' in response_headers and response_headers['transfer-encoding'].lower() == 'chunked':
+            chunked_data = self._read_chunked_body(response)
+            content = chunked_data.decode("utf-8")
         else:
             content = response.read().decode("utf-8")
 
