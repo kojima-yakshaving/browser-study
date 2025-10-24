@@ -1,3 +1,4 @@
+from datetime import datetime
 from socket import socket as Socket, AF_INET, SOCK_STREAM, IPPROTO_TCP
 import ssl
 from typing import ClassVar, Dict, Literal, NamedTuple, Optional, TypedDict
@@ -13,6 +14,17 @@ class ConnectionPoolCacheKey(NamedTuple):
     host: str 
     port: int
 
+
+class BrowserCacheKey(NamedTuple):
+    url: str
+
+
+class BrowserCacheEntry(NamedTuple):
+    content: str
+    max_age: int
+    timestamp: Optional[datetime] = None
+
+
 class Connection:
     """
     A connection to handle HTTP/HTTPS requests with support for connection pooling.
@@ -24,6 +36,7 @@ class Connection:
     MAX_REDIRECTS = 20
 
     connection_pool: ClassVar[Dict[ConnectionPoolCacheKey, Socket]] = {}
+    browser_cache: ClassVar[Dict[BrowserCacheKey, BrowserCacheEntry]] = {}
 
     socket: Optional[Socket]
     http_options: HttpOptions
@@ -40,6 +53,18 @@ class Connection:
             return f.read()
 
     def _request_http(self, url: URL, http_options: HttpOptions) -> str:
+        now = datetime.now()
+        browser_cache_key = BrowserCacheKey(url=str(url))
+
+        # flush cache if expired
+        if browser_cache_key in Connection.browser_cache:
+            cached_content = Connection.browser_cache[browser_cache_key]
+            age = (now - cached_content.timestamp).total_seconds() if cached_content.timestamp else 0
+            if age >= cached_content.max_age:
+                Connection.browser_cache.pop(browser_cache_key, None)
+            else:
+                return cached_content.content
+
         if http_options['http_version'] not in ("1.0", "1.1"):
             raise ValueError("Unsupported HTTP version")
 
@@ -127,6 +152,37 @@ class Connection:
             self.socket = None 
             Connection.connection_pool.pop(ConnectionPoolCacheKey(host=url.host, port=url.port), None)
 
+
+        if 'cache-control' in response_headers:
+            cache_control = response_headers['cache-control']
+
+            directives = [d.strip() for d in cache_control.split(",")]
+            if "no-store" in directives:
+                Connection.browser_cache.pop(BrowserCacheKey(url=str(url)), None)
+                pass
+            else:
+                for directive in directives:
+                    if not directive.startswith("max-age="):
+                        continue
+
+                    max_age = int(directive[len("max-age="):])
+                    cached_content = Connection.browser_cache.get(BrowserCacheKey(url=str(url)))
+                    if cached_content:
+                        age = (datetime.now() - cached_content.timestamp).total_seconds() if cached_content.timestamp else 0
+                        if age < cached_content.max_age:
+                            content = cached_content.content 
+                        else:
+                            Connection.browser_cache[BrowserCacheKey(url=str(url))] = BrowserCacheEntry(
+                                content=content,
+                                max_age=max_age,
+                                timestamp=datetime.now()
+                            )
+                    else:
+                        Connection.browser_cache[BrowserCacheKey(url=str(url))] = BrowserCacheEntry(
+                            content=content,
+                            max_age=max_age,
+                            timestamp=datetime.now()
+                        )
 
         return content
 
