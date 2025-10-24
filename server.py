@@ -45,7 +45,7 @@ def cache_endpoint(mode: Optional[str] = None) -> PlainTextResponse:
 async def gzip_endpoint(request: Request):
     body = b"Hello GZip"
     accept_encoding = request.headers.get("accept-encoding", "")
-    if "gzip" in accept_encoding.lower():
+    if "gzip" in accept_encoding.lower() or "*" in accept_encoding:
         compressed = gzip.compress(body)
         headers = {
             "Content-Encoding": "gzip",  # Tell the browser the payload is gzip-compressed.
