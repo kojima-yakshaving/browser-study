@@ -15,6 +15,10 @@ class ConnectionPoolCacheKey(NamedTuple):
 
 
 class Connection:
+    """
+    A connection to handle HTTP/HTTPS requests with support for connection pooling.
+    """
+
     connection_pool: ClassVar[Dict[ConnectionPoolCacheKey, Socket]] = {}
 
     socket: Optional[Socket]
