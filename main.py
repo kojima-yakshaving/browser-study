@@ -1,7 +1,7 @@
 import sys
-from renderer import RenderMode, Renderer
-from connection import Connection
-from url import URL
+from gorushi.renderer import RenderMode, Renderer
+from gorushi.connection import Connection
+from gorushi.url import URL
 
 
 def show(body, *, render_mode: RenderMode):

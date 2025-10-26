@@ -1,7 +1,7 @@
 
 import pytest
-from connection import Connection
-from url import URL
+from gorushi.connection import Connection
+from gorushi.url import URL
 import time
 
 @pytest.mark.cache

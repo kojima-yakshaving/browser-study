@@ -4,7 +4,7 @@ from socket import socket as Socket, AF_INET, SOCK_STREAM, IPPROTO_TCP
 import ssl
 from typing import ClassVar, Dict, Literal, NamedTuple, Optional, TypedDict
 
-from url import URL
+from gorushi.url import URL
 
 
 class HttpOptions(TypedDict):

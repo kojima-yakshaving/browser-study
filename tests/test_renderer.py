@@ -1,7 +1,7 @@
 import pytest
 
-from url import URL
-from renderer import Renderer, RenderMode
+from gorushi.url import URL
+from gorushi.renderer import Renderer, RenderMode
 
 
 @pytest.mark.ci

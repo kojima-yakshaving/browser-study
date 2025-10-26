@@ -1,6 +1,6 @@
 import pytest
 
-from url import URL
+from gorushi.url import URL
 
 
 @pytest.mark.ci

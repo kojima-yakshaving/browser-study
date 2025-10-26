@@ -2,8 +2,8 @@ import time
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from url import URL
-from connection import Connection, ConnectionPoolCacheKey
+from gorushi.url import URL
+from gorushi.connection import Connection, ConnectionPoolCacheKey
 
 # --- Benchmark Function ---
 
