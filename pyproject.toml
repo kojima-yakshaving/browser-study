@@ -12,10 +12,19 @@ dev = [
     "pytest-watch",
 ]
 
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.lint]
+extend-select = ["E501"]
+
 [dependency-groups]
 dev = [
+    "basedpyright>=1.32.1",
     "fastapi>=0.120.0",
     "pytest>=8.4.2",
     "pytest-watch>=4.2.0",
+    "ruff>=0.14.2",
+    "ty>=0.0.1a24",
     "uvicorn>=0.38.0",
 ]
