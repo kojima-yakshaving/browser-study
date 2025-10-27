@@ -4,7 +4,7 @@ from gorushi.connection import Connection
 from gorushi.url import URL
 
 
-def show(body, *, render_mode: RenderMode):
+def show(body: str, *, render_mode: RenderMode):
     print(
         Renderer(
             content = body, 
@@ -12,7 +12,7 @@ def show(body, *, render_mode: RenderMode):
         ).render()
     )
 
-def load(url):
+def load(url: URL):
     connection = Connection(http_options={'http_version': '1.1'})
     body = connection.request(url=url)
     show(body,  render_mode=RenderMode.RAW if url.view_source else RenderMode.RENDERED)

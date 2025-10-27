@@ -1,14 +1,10 @@
-import socket
-import ssl
-from typing import Optional
-
 class URL:
     scheme: str
     path: str 
     host: str
     port: int
 
-    content: Optional[str]
+    content: str | None = None
 
     view_source: bool = False
     

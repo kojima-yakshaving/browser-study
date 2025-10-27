@@ -2,13 +2,13 @@ from datetime import datetime
 from io import BufferedReader
 from socket import socket as Socket, AF_INET, SOCK_STREAM, IPPROTO_TCP
 import ssl
-from typing import ClassVar, Dict, Literal, NamedTuple, Optional, TypedDict
+from typing import ClassVar, Literal, NamedTuple, TypedDict
 
 from gorushi.url import URL
 
 
 class HttpOptions(TypedDict):
-    http_version: Optional[Literal["1.0", "1.1"]]
+    http_version: Literal["1.0", "1.1"] | None
 
 
 class ConnectionPoolCacheKey(NamedTuple):
@@ -23,7 +23,7 @@ class BrowserCacheKey(NamedTuple):
 class BrowserCacheEntry(NamedTuple):
     content: str
     max_age: int
-    timestamp: Optional[datetime] = None
+    timestamp: datetime | None = None
 
 
 class Connection:
@@ -36,13 +36,13 @@ class Connection:
     # See chromiums's implmentation: https://chromium.googlesource.com/chromium/src/+/refs/heads/main/net/url_request
     MAX_REDIRECTS = 20
 
-    connection_pool: ClassVar[Dict[ConnectionPoolCacheKey, Socket]] = {}
-    browser_cache: ClassVar[Dict[BrowserCacheKey, BrowserCacheEntry]] = {}
+    connection_pool: ClassVar[dict[ConnectionPoolCacheKey, Socket]] = {}
+    browser_cache: ClassVar[dict[BrowserCacheKey, BrowserCacheEntry]] = {}
 
-    socket: Optional[Socket]
+    socket: Socket | None
     http_options: HttpOptions
 
-    def __init__(self, http_options: Optional[HttpOptions] = None):
+    def __init__(self, http_options: HttpOptions | None = None):
         self.socket = None 
         self.http_options = http_options or { "http_version": "1.0" }
 
@@ -129,7 +129,7 @@ class Connection:
             statusline = response.readline().decode("utf-8")
             version, status, explanation = statusline.split(" ", 2)
 
-            response_headers = {}
+            response_headers: dict[str, str] = {}
             while True:
                 line = response.readline().decode("utf-8")
                 if line == "\r\n": 
