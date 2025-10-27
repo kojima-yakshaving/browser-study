@@ -2,7 +2,9 @@ from dataclasses import dataclass
 import tkinter
 
 from gorushi.connection import Connection
-from gorushi.constants import DEFAULT_HEIGHT, DEFAULT_WIDTH
+from gorushi.constants import (
+    DEFAULT_HEIGHT, DEFAULT_HSTEP, DEFAULT_VSTEP, DEFAULT_WIDTH
+)
 from gorushi.renderer import RenderMode, Renderer
 from gorushi.url import URL
 
@@ -25,20 +27,22 @@ class Browser:
         connection = Connection(http_options={'http_version': '1.1'})
         body = connection.request(url=url)
 
-        self.show(
+        result = self.lex(
             body, 
             render_mode=RenderMode.RAW if url.view_source 
             else RenderMode.RENDERED
         )
 
-        self.canvas.create_rectangle(10, 20, 400, 300)
-        self.canvas.create_oval(100, 100, 150, 150)
-        self.canvas.create_text(200, 150, text="Hello, World!")
+        cursor_x, cursor_y = DEFAULT_HSTEP, DEFAULT_VSTEP
+        for c in result: 
+            _ = self.canvas.create_text(cursor_x, cursor_y, text=c)
+            cursor_x += DEFAULT_HSTEP
+            if cursor_x > DEFAULT_WIDTH - DEFAULT_HSTEP:
+                cursor_x = DEFAULT_HSTEP
+                cursor_y += DEFAULT_VSTEP
 
-    def show(self, body: str, *, render_mode: RenderMode):
-        print(
-            Renderer(
-                content = body, 
-                render_mode = render_mode
-            ).render()
-        )
+    def lex(self, body: str, *, render_mode: RenderMode):
+        return Renderer(
+            content = body, 
+            render_mode = render_mode
+        ).render()
