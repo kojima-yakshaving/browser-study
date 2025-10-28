@@ -37,6 +37,11 @@ class Browser:
         self.scroll = 0
         self.canvas.pack()
         _ = self.window.bind("<Down>", self.scrolldown)
+        _ = self.window.bind("<Up>", self.scrollup)
+
+    def scrollup(self, _: tkinter.Event) -> None:
+        self.scroll = max(0, self.scroll - self.SCROLL_DOWN)
+        self.draw()
 
     def scrolldown(self, _: tkinter.Event) -> None:
         self.scroll += self.SCROLL_DOWN
