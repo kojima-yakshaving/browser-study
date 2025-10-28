@@ -55,6 +55,10 @@ class Browser:
         display_list: list[tuple[int,int,str]] = []
         cursor_x, cursor_y = self.hstep, self.vstep
         for c in text: 
+            if c == '\n':
+                cursor_x = self.hstep
+                cursor_y += self.vstep
+                continue
             display_list.append((cursor_x, cursor_y, c))
             _ = self.canvas.create_text(cursor_x, cursor_y, text=c)
             cursor_x += DEFAULT_HSTEP
