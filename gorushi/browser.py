@@ -86,6 +86,18 @@ class Browser:
                 continue
             _ = self.canvas.create_text(x, y - self.scroll, text=c)
 
+        # Draw scrollbar
+        if self.scroll_height > self.height:
+            scrollbar_height = 30
+            scrollbar_y = self.scroll * self.height // self.scroll_height
+            _ = self.canvas.create_rectangle(
+                self.width - 10, 
+                scrollbar_y, 
+                self.width, 
+                scrollbar_y + scrollbar_height, 
+                fill="blue"
+            )
+
     def layout(self,text: str) -> list[tuple[int, int, str]]:
         display_list: list[tuple[int,int,str]] = []
         cursor_x, cursor_y = self.hstep, self.vstep
