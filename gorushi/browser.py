@@ -1,5 +1,6 @@
 import tkinter
 from typing import ClassVar
+import os
 
 from gorushi.connection import Connection
 from gorushi.constants import (
@@ -18,9 +19,75 @@ def get_project_root() -> str:
         if os.path.abspath(parent) == os.path.abspath(os.path.join(parent, "..")):
             break
         parent = os.path.join(parent, "..")
-    return os.path.dirname(os.path.abspath(__file__)) 
+    # resolve to absolute path 
+    return os.path.abspath(parent)
 
 project_root = get_project_root()
+
+def build_emoji_map() -> dict[str, str]:
+    """
+    Build a mapping from emoji characters to their corresponding 
+    image file paths.
+    """
+    emoji_map: dict[str, str] = {}
+    openmoji_dir = os.path.join(project_root, "assets", "openmoji")
+
+    if not os.path.exists(openmoji_dir):
+        return emoji_map
+
+    for filename in os.listdir(openmoji_dir):
+        if not filename.endswith(".png"):
+            continue
+
+        # extract codepoint(s) from filename
+        codepoint_str = filename[:-4]
+
+        # process - multiple codepoints
+        if "-" in codepoint_str:
+            codepoints = [int(cp, 16) for cp in codepoint_str.split("-")]
+            try:
+                # combine codepoints into a single character
+                char = "".join(chr(cp) for cp in codepoints)
+                emoji_map[char] = os.path.join(openmoji_dir, filename)
+            except (ValueError, OverflowError):
+                pass
+        else:
+            # single codepoint
+            try:
+                codepoint = int(codepoint_str, 16)
+                char = chr(codepoint)
+                emoji_map[char] = os.path.join(openmoji_dir, filename)
+            except (ValueError, OverflowError):
+                pass
+
+    return emoji_map
+
+
+def load_emoji_image(file_path: str) -> tkinter.PhotoImage:
+    """
+    Load an emoji image from the given file path, using a cache to
+    avoid reloading images multiple times.
+    """
+    if file_path in emoji_image_cache:
+        return emoji_image_cache[file_path]
+    
+    try:
+        image = tkinter.PhotoImage(
+            file=file_path,
+        )
+        sampled_image = image.subsample(4) 
+        emoji_image_cache[file_path] = sampled_image
+        return image
+    except tkinter.TclError:
+        raise RuntimeError(f"Failed to load emoji image from {file_path}")
+
+
+# Build the emoji map at module load time
+emoji_map = build_emoji_map()
+
+# Cache for loaded emoji images
+emoji_image_cache: dict[str, tkinter.PhotoImage] = {}
+
 
 class Browser:
     window: tkinter.Tk
@@ -93,11 +160,23 @@ class Browser:
     def draw(self):
         self.canvas.delete("all")
         for x, y, c in self.display_list:
-            if y > self.scroll + self.height: 
+            if y > self.scroll + self.height:
                 continue
-            if y + self.vstep < self.scroll: 
+            if y + self.vstep < self.scroll:
                 continue
-            _ = self.canvas.create_text(x, y - self.scroll, text=c)
+
+            # Draw emoji
+            if c in emoji_map:
+                try:
+                    _ = self.canvas.create_image(
+                        x,
+                        y - self.scroll,
+                        image=load_emoji_image(emoji_map[c]),
+                    )
+                except tkinter.TclError:
+                    _ = self.canvas.create_text(x, y - self.scroll, text=c)
+            else:
+                _ = self.canvas.create_text(x, y - self.scroll, text=c)
 
         # Draw scrollbar
         if self.scroll_height > self.height:
