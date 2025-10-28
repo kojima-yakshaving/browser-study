@@ -6,5 +6,7 @@ dist/
 wheels/
 *.egg-info
 
+assets/openmoji/
+
 # Virtual environments
 .venv
