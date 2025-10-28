@@ -25,6 +25,8 @@ class Browser:
     rendered_content: str = ""
     display_list: list[tuple[int,int,str]] = []
 
+    scroll_height: int = 0
+
     def __init__(
         self,
         *,
@@ -69,7 +71,10 @@ class Browser:
         self.draw()
 
     def scrolldown(self, _: tkinter.Event) -> None:
-        self.scroll += self.SCROLL_DOWN
+        self.scroll = min(
+            self.scroll + self.SCROLL_DOWN, 
+            max(0, self.scroll_height - self.height)
+        )
         self.draw()
 
     def draw(self):
@@ -95,6 +100,8 @@ class Browser:
             if cursor_x > self.width - self.hstep:
                 cursor_x = self.hstep
                 cursor_y += self.vstep
+
+        self.scroll_height = cursor_y
 
         return display_list
 
