@@ -8,6 +8,19 @@ from gorushi.constants import (
 from gorushi.renderer import RenderMode, Renderer
 from gorushi.url import URL
 
+def get_project_root() -> str:
+    import os
+    # iterate until we find the project root (.git)
+    parent = ""
+    while True:
+        if os.path.exists(os.path.join(parent, ".git")):
+            break
+        if os.path.abspath(parent) == os.path.abspath(os.path.join(parent, "..")):
+            break
+        parent = os.path.join(parent, "..")
+    return os.path.dirname(os.path.abspath(__file__)) 
+
+project_root = get_project_root()
 
 class Browser:
     window: tkinter.Tk
