@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import tkinter
+from typing import ClassVar
 
 from gorushi.connection import Connection
 from gorushi.constants import (
@@ -9,19 +10,60 @@ from gorushi.renderer import RenderMode, Renderer
 from gorushi.url import URL
 
 
-@dataclass
 class Browser:
     window: tkinter.Tk
     canvas: tkinter.Canvas
+    scroll: int
 
-    def __init__(self):
+    hstep: int = DEFAULT_HSTEP
+    vstep: int = DEFAULT_VSTEP
+
+    SCROLL_DOWN: ClassVar[int] = 100
+
+    display_list: list[tuple[int,int,str]] = []
+
+    def __init__(
+        self,
+        *,
+        width: int = DEFAULT_WIDTH,
+        height: int = DEFAULT_HEIGHT
+    ):
         self.window = tkinter.Tk()
         self.canvas = tkinter.Canvas(
             self.window, 
-            width=DEFAULT_WIDTH, 
-            height=DEFAULT_HEIGHT
+            width=width, 
+            height=height,
         )
+        self.scroll = 0
         self.canvas.pack()
+        _ = self.window.bind("<Down>", self.scrolldown)
+
+    def scrolldown(self, _: tkinter.Event) -> None:
+        self.scroll += self.SCROLL_DOWN
+        self.draw()
+
+    def draw(self):
+        self.canvas.delete("all")
+        for x, y, c in self.display_list:
+            if y > self.scroll + DEFAULT_HEIGHT: 
+                continue
+            if y + self.vstep < self.scroll: 
+                continue
+            _ = self.canvas.create_text(x, y - self.scroll, text=c)
+
+    def layout(self,text: str) -> list[tuple[int, int, str]]:
+        display_list: list[tuple[int,int,str]] = []
+        cursor_x, cursor_y = self.hstep, self.vstep
+        for c in text: 
+            display_list.append((cursor_x, cursor_y, c))
+            _ = self.canvas.create_text(cursor_x, cursor_y, text=c)
+            cursor_x += DEFAULT_HSTEP
+            if cursor_x > DEFAULT_WIDTH - DEFAULT_HSTEP:
+                cursor_x = DEFAULT_HSTEP
+                cursor_y += DEFAULT_VSTEP
+
+        return display_list
+
 
     def load(self, url: URL):
         connection = Connection(http_options={'http_version': '1.1'})
@@ -33,13 +75,11 @@ class Browser:
             else RenderMode.RENDERED
         )
 
-        cursor_x, cursor_y = DEFAULT_HSTEP, DEFAULT_VSTEP
-        for c in result: 
-            _ = self.canvas.create_text(cursor_x, cursor_y, text=c)
-            cursor_x += DEFAULT_HSTEP
-            if cursor_x > DEFAULT_WIDTH - DEFAULT_HSTEP:
-                cursor_x = DEFAULT_HSTEP
-                cursor_y += DEFAULT_VSTEP
+        # print(result)
+        self.display_list = self.layout(result)
+
+        self.draw()
+
 
     def lex(self, body: str, *, render_mode: RenderMode):
         return Renderer(
