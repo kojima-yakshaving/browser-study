@@ -88,7 +88,6 @@ emoji_map = build_emoji_map()
 # Cache for loaded emoji images
 emoji_image_cache: dict[str, tkinter.PhotoImage] = {}
 
-
 class Browser:
     window: tkinter.Tk
     canvas: tkinter.Canvas
@@ -163,24 +162,85 @@ class Browser:
 
     def draw(self):
         self.canvas.delete("all")
+
+        drawable_characters: list[tuple[int, int, str]] = []
         for x, y, c in self.display_list:
             if y > self.scroll + self.height:
                 continue
             if y + self.vstep < self.scroll:
                 continue
+            drawable_characters.append((x, y, c))
 
-            # Draw emoji
-            if c in emoji_map:
+        lines: dict[int, list[tuple[int, str]]] = {}
+        for x, y, c in drawable_characters:
+            if y not in lines:
+                lines[y] = []
+            lines[y].append((x, c))
+
+        for y, line_chars in lines.items():
+            line_chars.sort(key=lambda item: item[0])
+            total_width = len(line_chars) * self.hstep
+            
+            emoji_positions: list[tuple[int, str]] = []
+            text_segments: list[tuple[int | None, str]] = []
+            current_text = ""
+            text_start_x = None
+            
+            for x, c in line_chars:
+                if c in emoji_map:
+                    if current_text:
+                        text_segments.append((text_start_x, current_text))
+                        current_text = ""
+                        text_start_x = None
+                    emoji_positions.append((x, c))
+                else:
+                    if text_start_x is None:
+                        text_start_x = x
+                    current_text += c
+            
+            if current_text:
+                text_segments.append((text_start_x, current_text))
+            
+            # start from the right edge
+            start_x = \
+                (self.width - total_width - self.hstep) if \
+                    not self.is_ltr else 0
+
+            for x, text in text_segments:
+                if x is None: 
+                    continue
+                x_pos = x
+
+                if not self.is_ltr:
+                    x_pos = start_x + (x - self.hstep)
+
+                _ = self.canvas.create_text(
+                    x_pos,
+                    y - self.scroll,
+                    text=text,
+                    anchor="nw",
+                    font=("Arial", 13),  # Adjust font as needed
+                )
+            
+            for x, c in emoji_positions:
+                x_pos = x
+                if not self.is_ltr:
+                    x_pos = start_x + (x - self.hstep)
+                
                 try:
-                    _ = self.canvas.create_image(
-                        x,
+                    self.canvas.create_image(
+                        x_pos,
                         y - self.scroll,
                         image=load_emoji_image(emoji_map[c]),
+                        anchor="nw"
                     )
-                except tkinter.TclError:
-                    _ = self.canvas.create_text(x, y - self.scroll, text=c)
-            else:
-                _ = self.canvas.create_text(x, y - self.scroll, text=c)
+                except Exception:
+                    _ = self.canvas.create_text(
+                        x_pos,
+                        y - self.scroll,
+                        text=c,
+                        anchor="nw"
+                    )
 
         # Draw scrollbar
         if self.scroll_height > self.height:
@@ -203,7 +263,7 @@ class Browser:
                 cursor_y += self.vstep
                 continue
             display_list.append((cursor_x, cursor_y, c))
-            _ = self.canvas.create_text(cursor_x, cursor_y, text=c)
+
             cursor_x += self.hstep
             if cursor_x > self.width - self.hstep:
                 cursor_x = self.hstep
