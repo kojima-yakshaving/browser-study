@@ -230,4 +230,4 @@ class Browser:
         return Renderer(
             content = body, 
             render_mode = render_mode
-        ).render()
+        ).render_text_only()

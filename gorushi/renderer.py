@@ -143,6 +143,23 @@ class Renderer:
     content: str
     render_mode: RenderMode = RenderMode.RENDERED
 
+    def render_text_only(self) -> str:
+        if self.render_mode == RenderMode.RAW:
+            return self.content
+
+        text = ""
+        in_tag = False
+        for c in self.content:
+            if c == "<":
+                in_tag = True
+            elif c == ">":
+                in_tag = False
+            elif not in_tag:
+                text += c
+
+        return text
+
+
     def render(self) -> str:
         if self.render_mode == RenderMode.RAW:
             return self.content
