@@ -211,8 +211,12 @@ class Browser:
 
 
     def load(self, url: URL):
-        connection = Connection(http_options={'http_version': '1.1'})
-        body = connection.request(url=url)
+        body = ""
+        if url.scheme != 'about':
+            connection = Connection(http_options={'http_version': '1.1'})
+            body = connection.request(url=url)
+        else:
+            body = ""
 
         self.rendered_content = self.lex(
             body, 
