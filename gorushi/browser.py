@@ -4,7 +4,7 @@ import os
 
 from gorushi.connection import Connection
 from gorushi.constants import (
-    DEFAULT_HEIGHT, DEFAULT_HSTEP, DEFAULT_VSTEP, DEFAULT_WIDTH
+    DEFAULT_HEIGHT, DEFAULT_HORIZONTAL_PADDING, DEFAULT_HSTEP, DEFAULT_VERTICAL_PADDING, DEFAULT_VSTEP, DEFAULT_WIDTH
 )
 from gorushi.renderer import RenderMode, Renderer
 from gorushi.url import URL
@@ -165,9 +165,11 @@ class Browser:
 
         drawable_characters: list[tuple[int, int, str]] = []
         for x, y, c in self.display_list:
-            if y > self.scroll + self.height:
+            # padding from bottom
+            if y + DEFAULT_VERTICAL_PADDING + self.vstep > self.scroll + self.height:
                 continue
-            if y + self.vstep < self.scroll:
+            # padding from top
+            if y - DEFAULT_VERTICAL_PADDING < self.scroll:
                 continue
             drawable_characters.append((x, y, c))
 
@@ -204,15 +206,15 @@ class Browser:
             # start from the right edge
             start_x = \
                 (self.width - total_width - self.hstep) if \
-                    not self.is_ltr else 0
+                    not self.is_ltr else DEFAULT_HORIZONTAL_PADDING
 
             for x, text in text_segments:
                 if x is None: 
                     continue
-                x_pos = x
+                x_pos = x + DEFAULT_HORIZONTAL_PADDING 
 
                 if not self.is_ltr:
-                    x_pos = start_x + (x - self.hstep)
+                    x_pos = start_x + (x - self.hstep) - DEFAULT_HORIZONTAL_PADDING
 
                 _ = self.canvas.create_text(
                     x_pos,
@@ -223,9 +225,9 @@ class Browser:
                 )
             
             for x, c in emoji_positions:
-                x_pos = x
+                x_pos = x + DEFAULT_HORIZONTAL_PADDING
                 if not self.is_ltr:
-                    x_pos = start_x + (x - self.hstep)
+                    x_pos = start_x + (x - self.hstep) - DEFAULT_HORIZONTAL_PADDING
                 
                 try:
                     self.canvas.create_image(
@@ -257,7 +259,7 @@ class Browser:
     def layout(self,text: str) -> list[tuple[int, int, str]]:
         display_list: list[tuple[int,int,str]] = []
         cursor_x, cursor_y = self.hstep, self.vstep
-        for c in text: 
+        for c in text:
             if c == '\n':
                 cursor_x = self.hstep
                 cursor_y += self.vstep
@@ -265,7 +267,7 @@ class Browser:
             display_list.append((cursor_x, cursor_y, c))
 
             cursor_x += self.hstep
-            if cursor_x > self.width - self.hstep:
+            if cursor_x > self.width - 2 * self.hstep - 2 * DEFAULT_HORIZONTAL_PADDING * 2:
                 cursor_x = self.hstep
                 cursor_y += self.vstep
 
