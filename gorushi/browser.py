@@ -107,11 +107,14 @@ class Browser:
 
     scroll_height: int = 0
 
+    is_ltr: bool
+
     def __init__(
         self,
         *,
         width: int = DEFAULT_WIDTH,
-        height: int = DEFAULT_HEIGHT
+        height: int = DEFAULT_HEIGHT,
+        is_ltr: bool = True,
     ):
         self.window = tkinter.Tk()
         self.canvas = tkinter.Canvas(
@@ -123,6 +126,7 @@ class Browser:
         self.width = width
         self.height = height
         self.scroll = 0
+        self.is_ltr = is_ltr
 
         self.canvas.pack(
             expand=True,
