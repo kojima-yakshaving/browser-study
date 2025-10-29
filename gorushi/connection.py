@@ -140,10 +140,10 @@ class Connection:
             if status.startswith("3") and 'location' in response_headers:
                 if response_headers['location'].startswith("http://") or response_headers['location'].startswith("https://"):
                     # absolute redirect
-                    url = URL(response_headers['location'])
+                    url = URL.parse(response_headers['location'])
                 else:
                     # relative redirect
-                    url = URL(url.scheme + "://" + url.host + f":{url.port}" + response_headers['location'])
+                    url = URL.parse(url.scheme + "://" + url.host + f":{url.port}" + response_headers['location'])
                 redirect_count += 1
 
                 # Close the socket for HTTP/1.0 connections on redirect (not persistent)

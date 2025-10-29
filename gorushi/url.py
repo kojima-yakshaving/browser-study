@@ -1,3 +1,7 @@
+from dataclasses import dataclass
+
+
+@dataclass
 class URL:
     scheme: str
     path: str 
@@ -7,49 +11,74 @@ class URL:
     content: str | None = None
 
     view_source: bool = False
-    
-    def __init__(self, url: str):
+
+    @classmethod
+    def parse(cls, url: str) -> "URL":
+        view_source = False
+        scheme = ""
         if url.startswith('view-source:'):
-            self.view_source = True
+            view_source = True
             url = url[len('view-source:'):]
 
         if url.startswith("data:"):
-            self.scheme = "data"
+            scheme = "data"
             content = url.split(",", 1)[1]
-            self.content = content
-            return
+            return cls(
+                scheme=scheme, 
+                path="", 
+                host="", 
+                port=0, 
+                content=content, 
+                view_source=view_source
+            )
 
         tokens = url.split("://", 1)
         if len(tokens) == 1:
             # if scheme is not specified and starts with "/", assume file scheme
             if url.startswith("/"):
-                self.scheme = "file"
+                scheme = "file"
             else:
                 raise ValueError("Invalid URL: {}".format(url))
         else:
-            self.scheme, url = url.split("://", 1)
+            scheme, url = url.split("://", 1)
 
-            assert self.scheme in ("http", "https", "file")
+            assert scheme in ("http", "https", "file")
 
-        if self.scheme == "file":
+        if scheme == "file":
             if url.startswith("//"):
                 url = url[2:]
             # if url not starts with "/", add it
             if not url.startswith("/"):
                 url = "/" + url
-            self.path = url
-            return
+            path = url
+            return cls(
+                scheme=scheme, 
+                path=path, 
+                host="", 
+                port=0, 
+                view_source=view_source
+            )
 
+        port = 0
         if "/" not in url:
             url = url + "/"
-        self.host, url = url.split("/", 1)
-        self.path = "/" + url
+        host, url = url.split("/", 1)
+        path = "/" + url
 
-        if self.scheme == "http":
-            self.port = 80
-        elif self.scheme == "https":
-            self.port = 443
+        if scheme == "http":
+            port = 80
+        elif scheme == "https":
+            port = 443
 
-        if ":" in self.host:
-            self.host, port = self.host.split(":", 1)
-            self.port = int(port)
+        if ":" in host:
+            host, port = host.split(":", 1)
+            port = int(port)
+
+        return cls(
+            scheme=scheme, 
+            path=path, 
+            host=host, 
+            port=port, 
+            view_source=view_source
+        )
+        

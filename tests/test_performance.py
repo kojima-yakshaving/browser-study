@@ -15,7 +15,7 @@ def run_benchmark(num_requests, keep_alive):
     http_version = "1.1" if keep_alive else "1.0"
 
     for i in range(num_requests):
-        url = URL(base_url)
+        url = URL.parse(base_url)
         key = ConnectionPoolCacheKey(host=url.host, port=url.port)
         
         # For HTTP/1.1, we check the pool before the request to see if it will be reused.
@@ -93,12 +93,12 @@ def test_connection_reuse_across_urls():
     conn = Connection(http_options={"http_version": "1.1"})
 
     # First request to establish a connection
-    conn.request(url=URL(f"{base_url}/page1"))
+    conn.request(url=URL.parse(f"{base_url}/page1"))
     assert len(Connection.connection_pool) == 1
 
     # Subsequent requests to different paths but the same host
     for i in range(num_requests - 1):
-        conn.request(url=URL(f"{base_url}/page{i+2}"))
+        conn.request(url=URL.parse(f"{base_url}/page{i+2}"))
 
     # The same connection should be reused
     assert len(Connection.connection_pool) == 1

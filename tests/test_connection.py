@@ -10,7 +10,7 @@ def test_caching_with_live_server():
     conn = Connection(http_options={'http_version': '1.1'})
 
     # Test max-age
-    url_max_age = URL("http://localhost:8000/cache?mode=max-age")
+    url_max_age = URL.parse("http://localhost:8000/cache?mode=max-age")
     # First request, should fetch from server
     content1 = conn.request(url=url_max_age)
     # Second request, should be served from cache
@@ -24,7 +24,7 @@ def test_caching_with_live_server():
     assert content1 != content3
 
     # Test no-store
-    url_no_store = URL("http://localhost:8000/cache?mode=no-store")
+    url_no_store = URL.parse("http://localhost:8000/cache?mode=no-store")
     # First request, should fetch from server
     content4 = conn.request(url=url_no_store)
     # Second request, should also fetch from server

@@ -6,5 +6,5 @@ from gorushi.url import URL
 
 if __name__ == "__main__":
     browser = Browser()
-    browser.load(URL(sys.argv[1]))
+    browser.load(URL.parse(sys.argv[1]))
     tkinter.mainloop()
