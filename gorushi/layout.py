@@ -1,5 +1,5 @@
 import tkinter.font
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
 from gorushi.constants import (
@@ -7,6 +7,7 @@ from gorushi.constants import (
 )
 from gorushi.node import Tag, Text
 
+FONT_CACHE: dict[tuple[float, str, str], tuple[tkinter.font.Font, tkinter.Label]] = {}
 
 @dataclass
 class Layout:
@@ -18,6 +19,8 @@ class Layout:
 
     hstep: float = DEFAULT_HSTEP 
     vstep: float = DEFAULT_VSTEP
+
+    size: int = 12
 
     font_weight: Literal["normal", "bold"] = "normal"
     style: Literal["italic", "roman"] = "roman"
@@ -143,7 +146,21 @@ class Layout:
         self.line.clear()
 
 
-
+    def get_font(self, 
+        size: int, 
+        weight: Literal['normal', 'bold'], 
+        style: Literal['italic', 'roman']
+    ) -> tkinter.font.Font:
+        key = (size, weight, style)
+        if key not in FONT_CACHE:
+            font = tkinter.font.Font(
+                size=size, 
+                weight=weight,
+                slant=style
+            )
+            label = tkinter.Label(font=font)
+            FONT_CACHE[key] = (font, label)
+        return FONT_CACHE[key][0]
 
     def layout(self, tokens: list[Tag | Text]) -> \
         list[tuple[float,float,str, tkinter.font.Font]]:
