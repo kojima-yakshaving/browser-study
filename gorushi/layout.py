@@ -46,7 +46,6 @@ class Layout:
                 buffer = ""
             elif c == ">":
                 in_tag = False
-                buffer += c
                 out.append(Tag(buffer))
                 buffer = ""
             else:
