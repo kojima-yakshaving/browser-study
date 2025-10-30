@@ -110,6 +110,7 @@ class Browser:
     scroll_height: float = 0
 
     is_ltr: bool
+    center_align: bool = False
 
     def __init__(
         self,
@@ -117,6 +118,7 @@ class Browser:
         width: float = DEFAULT_WIDTH,
         height: float = DEFAULT_HEIGHT,
         is_ltr: bool = True,
+        center_align: bool = False
     ):
         self.window = tkinter.Tk()
         self.canvas = tkinter.Canvas(
@@ -130,6 +132,7 @@ class Browser:
         self.height = height
         self.scroll = 0
         self.is_ltr = is_ltr
+        self.center_align = center_align
 
         self.canvas.pack(
             expand=True,
@@ -218,6 +221,8 @@ class Browser:
             x_pos: float = x + DEFAULT_HORIZONTAL_PADDING
             if not self.is_ltr:
                 x_pos = start_x - (line_width[y]) + x - self.hstep - DEFAULT_HORIZONTAL_PADDING
+            if self.center_align:
+                x_pos = (self.width - line_width[y]) / 2 - DEFAULT_HORIZONTAL_PADDING + x
 
             _ = self.canvas.create_text(
                 x_pos,
@@ -232,6 +237,8 @@ class Browser:
             x_pos: float = x + DEFAULT_HORIZONTAL_PADDING
             if not self.is_ltr:
                 x_pos = start_x - (line_width[y]) + x - self.hstep - DEFAULT_HORIZONTAL_PADDING
+            if self.center_align:
+                x_pos = (self.width - line_width[y]) / 2 - DEFAULT_HORIZONTAL_PADDING + x
             
             try:
                 self.canvas.create_image(
