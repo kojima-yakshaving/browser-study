@@ -169,5 +169,7 @@ class Layout:
         self.flush()
         for tok in tokens:
             self.process_token(tok)
+        
+        self.flush()
 
         return self.display_list
