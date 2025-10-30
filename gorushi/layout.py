@@ -5,6 +5,7 @@ from typing import Literal
 from gorushi.constants import (
     DEFAULT_HEIGHT, DEFAULT_HORIZONTAL_PADDING, DEFAULT_HSTEP, DEFAULT_VSTEP, DEFAULT_WIDTH
 )
+from gorushi.font_measure_cache import font_measurer
 from gorushi.node import Tag, Text
 
 FONT_CACHE: dict[
@@ -61,7 +62,7 @@ class Layout:
 
     def process_word(self, word: str):
         font = self.get_font(self.size, self.font_weight, self.style)
-        w = font.measure(word)
+        w = font_measurer.measure(font, word)
 
         if self.cursor_x + w > self.interpolate_width:
             self.flush()
@@ -69,7 +70,7 @@ class Layout:
 
         
         self.line.append((self.cursor_x, word, font))
-        self.cursor_x += w + font.measure(" ")
+        self.cursor_x += w + font_measurer.measure(font, " ")
 
     def process_token(self, tok: Tag | Text):
         if isinstance(tok, Text):

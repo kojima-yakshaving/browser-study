@@ -7,6 +7,7 @@ from gorushi.connection import Connection
 from gorushi.constants import (
     DEFAULT_HEIGHT, DEFAULT_HORIZONTAL_PADDING, DEFAULT_HSTEP, DEFAULT_VERTICAL_PADDING, DEFAULT_VSTEP, DEFAULT_WIDTH
 )
+from gorushi.font_measure_cache import font_measurer
 from gorushi.layout import Layout
 from gorushi.renderer import RenderMode, Renderer
 from gorushi.url import URL
@@ -214,8 +215,8 @@ class Browser:
         for x, y, word, font in alternative_drawable_words:
             if y not in line_width:
                 line_width[y] = 0
-            line_width[y] += font.measure(word)
-            line_width[y] += font.measure(" ")
+            line_width[y] += font_measurer.measure(font,word)
+            line_width[y] += font_measurer.measure(font, " ")
 
         for x, y, word, font in alternative_drawable_words:
             x_pos: float = x + DEFAULT_HORIZONTAL_PADDING
