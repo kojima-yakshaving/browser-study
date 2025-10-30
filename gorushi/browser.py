@@ -282,8 +282,8 @@ class Browser:
         )
         display_list = layout_instance.layout(tokens)
 
-        self.scroll_height = cursor_y
         cursor_y: float = display_list[-1][1] if display_list else 0
+        self.scroll_height = cursor_y + DEFAULT_VERTICAL_PADDING + 2 * self.vstep
 
         self.draw()
 
