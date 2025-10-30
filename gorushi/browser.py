@@ -121,6 +121,7 @@ class Browser:
         self.window = tkinter.Tk()
         self.canvas = tkinter.Canvas(
             self.window, 
+            background="white",
             width=width, 
             height=height,
         )
