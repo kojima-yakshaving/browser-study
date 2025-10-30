@@ -8,7 +8,7 @@ from gorushi.url import URL
 argparser = argparse.ArgumentParser(
     description="A simple GUI web browser."
 )
-argparser.add_argument("--url")
+argparser.add_argument("url")
 argparser.add_argument("--width")
 argparser.add_argument("--height")
 argparser.add_argument("--ltr")
