@@ -7,7 +7,10 @@ from gorushi.constants import (
 )
 from gorushi.node import Tag, Text
 
-FONT_CACHE: dict[tuple[float, str, str], tuple[tkinter.font.Font, tkinter.Label]] = {}
+FONT_CACHE: dict[
+    tuple[float, str, str],
+    tuple[tkinter.font.Font, tkinter.Label | None]
+] = {}
 
 @dataclass
 class Layout:
@@ -157,8 +160,8 @@ class Layout:
                 weight=weight,
                 slant=style
             )
-            label = tkinter.Label(font=font)
-            FONT_CACHE[key] = (font, label)
+            # label = tkinter.Label(font=font)
+            FONT_CACHE[key] = (font, None)
         return FONT_CACHE[key][0]
 
     def layout(self, tokens: list[Tag | Text]) -> \
