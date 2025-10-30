@@ -1,4 +1,5 @@
 import tkinter
+import tkinter.font
 from typing import ClassVar
 import os
 
@@ -6,8 +7,10 @@ from gorushi.connection import Connection
 from gorushi.constants import (
     DEFAULT_HEIGHT, DEFAULT_HORIZONTAL_PADDING, DEFAULT_HSTEP, DEFAULT_VERTICAL_PADDING, DEFAULT_VSTEP, DEFAULT_WIDTH
 )
+from gorushi.layout import Layout
 from gorushi.renderer import RenderMode, Renderer
 from gorushi.url import URL
+from gorushi.node import Tag, Text
 
 def get_project_root() -> str:
     import os
@@ -101,7 +104,7 @@ class Browser:
 
     SCROLL_DOWN: ClassVar[int] = 100
 
-    rendered_content: str = ""
+    content: str = ""
     display_list: list[tuple[float,float,str]] = []
 
     scroll_height: float = 0
@@ -145,7 +148,16 @@ class Browser:
         self.width = e.width
         self.height = e.height
 
-        self.display_list = self.layout(self.rendered_content)
+        layout_instance = Layout(
+            width = self.width,
+            height = self.height,
+            hstep = self.hstep,
+            vstep = self.vstep,
+        )
+        tokens = layout_instance.lex(
+            self.content,
+        )
+        self.display_list = layout_instance.layout(tokens)
 
         self.draw()
 
@@ -256,26 +268,6 @@ class Browser:
                 fill="blue"
             )
 
-    def layout(self,text: str) -> list[tuple[int, int, str]]:
-        display_list: list[tuple[int,int,str]] = []
-        cursor_x, cursor_y = self.hstep, self.vstep
-        for c in text:
-            if c == '\n':
-                cursor_x = self.hstep
-                cursor_y += self.vstep
-                continue
-            display_list.append((cursor_x, cursor_y, c))
-
-            cursor_x += self.hstep
-            if cursor_x > self.width - 2 * self.hstep - 2 * DEFAULT_HORIZONTAL_PADDING * 2:
-                cursor_x = self.hstep
-                cursor_y += self.vstep
-
-        self.scroll_height = cursor_y
-
-        return display_list
-
-
     def load(self, url: URL):
         body = ""
         if url.scheme != 'about':
@@ -283,21 +275,21 @@ class Browser:
             body = connection.request(url=url)
         else:
             body = ""
+        self.content = body
 
-        self.rendered_content = self.lex(
-            body, 
-            render_mode=RenderMode.RAW if url.view_source 
-            else RenderMode.RENDERED
+        layout_instance = Layout(
+            width = self.width,
+            height = self.height,
+            hstep = self.hstep,
+            vstep = self.vstep,
         )
+        tokens = layout_instance.lex(
+            self.content, 
+        )
+        self.display_list = layout_instance.layout(tokens)
 
-        # print(result)
-        self.display_list = self.layout(self.rendered_content)
+        cursor_y = self.layout_list[-1][1] if self.display_list else 0
+        self.scroll_height = cursor_y
 
         self.draw()
 
-
-    def lex(self, body: str, *, render_mode: RenderMode):
-        return Renderer(
-            content = body, 
-            render_mode = render_mode
-        ).render_text_only()
