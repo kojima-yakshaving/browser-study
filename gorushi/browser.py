@@ -186,7 +186,6 @@ class Browser:
                 continue
             drawable_words.append((x, y, word, font))
 
-
         alternative_drawable_words: list[tuple[float, float, str, tkinter.font.Font]] = []
         start_x = DEFAULT_HORIZONTAL_PADDING if self.is_ltr else self.width - DEFAULT_HORIZONTAL_PADDING
 
@@ -215,11 +214,10 @@ class Browser:
             line_width[y] += font.measure(word)
             line_width[y] += font.measure(" ")
 
-        
         for x, y, word, font in alternative_drawable_words:
             x_pos: float = x + DEFAULT_HORIZONTAL_PADDING
             if not self.is_ltr:
-                x_pos = start_x - (line_width[y]) + x - DEFAULT_HORIZONTAL_PADDING
+                x_pos = start_x - (line_width[y]) + x - self.hstep - DEFAULT_HORIZONTAL_PADDING
 
             _ = self.canvas.create_text(
                 x_pos,
@@ -233,7 +231,7 @@ class Browser:
         for x, y, c in emoji_positions:
             x_pos: float = x + DEFAULT_HORIZONTAL_PADDING
             if not self.is_ltr:
-                x_pos = start_x + (x - self.hstep) - DEFAULT_HORIZONTAL_PADDING
+                x_pos = start_x - (line_width[y]) + x - self.hstep - DEFAULT_HORIZONTAL_PADDING
             
             try:
                 self.canvas.create_image(
