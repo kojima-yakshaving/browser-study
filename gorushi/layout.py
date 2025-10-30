@@ -66,6 +66,7 @@ class Layout:
         if self.cursor_x + w > self.interpolate_width:
             self.flush()
             self.cursor_x = self.hstep
+
         
         self.line.append((self.cursor_x, word, font))
         self.cursor_x += w + font.measure(" ")
@@ -156,6 +157,7 @@ class Layout:
         key = (size, weight, style)
         if key not in FONT_CACHE:
             font = tkinter.font.Font(
+                family="Arial",
                 size=size, 
                 weight=weight,
                 slant=style
