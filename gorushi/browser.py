@@ -197,9 +197,9 @@ class Browser:
             for c in word:
                 if c in emoji_map:
                     emoji_positions.append((current_x, y, c))
-                    current_x += font.measure(" ") 
+                    current_x += self.hstep
                 else:
-                    current_x += font.measure(c)
+                    current_x += self.hstep
 
             alternative_word = [
                 c if c not in emoji_map else " " for c in word
