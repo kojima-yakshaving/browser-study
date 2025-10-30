@@ -91,28 +91,28 @@ emoji_image_cache: dict[str, tkinter.PhotoImage] = {}
 class Browser:
     window: tkinter.Tk
     canvas: tkinter.Canvas
-    scroll: int
+    scroll: float
 
-    width: int
-    height: int
+    width: float
+    height: float
 
-    hstep: int = DEFAULT_HSTEP
-    vstep: int = DEFAULT_VSTEP
+    hstep: float = DEFAULT_HSTEP
+    vstep: float = DEFAULT_VSTEP
 
     SCROLL_DOWN: ClassVar[int] = 100
 
     rendered_content: str = ""
-    display_list: list[tuple[int,int,str]] = []
+    display_list: list[tuple[float,float,str]] = []
 
-    scroll_height: int = 0
+    scroll_height: float = 0
 
     is_ltr: bool
 
     def __init__(
         self,
         *,
-        width: int = DEFAULT_WIDTH,
-        height: int = DEFAULT_HEIGHT,
+        width: float = DEFAULT_WIDTH,
+        height: float = DEFAULT_HEIGHT,
         is_ltr: bool = True,
     ):
         self.window = tkinter.Tk()
@@ -163,7 +163,7 @@ class Browser:
     def draw(self):
         self.canvas.delete("all")
 
-        drawable_characters: list[tuple[int, int, str]] = []
+        drawable_characters: list[tuple[float, float, str]] = []
         for x, y, c in self.display_list:
             # padding from bottom
             if y + DEFAULT_VERTICAL_PADDING + self.vstep > self.scroll + self.height:
@@ -173,7 +173,7 @@ class Browser:
                 continue
             drawable_characters.append((x, y, c))
 
-        lines: dict[int, list[tuple[int, str]]] = {}
+        lines: dict[float, list[tuple[float, str]]] = {}
         for x, y, c in drawable_characters:
             if y not in lines:
                 lines[y] = []
@@ -183,8 +183,8 @@ class Browser:
             line_chars.sort(key=lambda item: item[0])
             total_width = len(line_chars) * self.hstep
             
-            emoji_positions: list[tuple[int, str]] = []
-            text_segments: list[tuple[int | None, str]] = []
+            emoji_positions: list[tuple[float, str]] = []
+            text_segments: list[tuple[float | None, str]] = []
             current_text = ""
             text_start_x = None
             
