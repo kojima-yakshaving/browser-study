@@ -105,7 +105,7 @@ class Browser:
     SCROLL_DOWN: ClassVar[int] = 100
 
     content: str = ""
-    display_list: list[tuple[float,float,str]] = []
+    display_list: list[tuple[float,float,str,tkinter.font.Font]] = []
 
     scroll_height: float = 0
 
@@ -176,86 +176,79 @@ class Browser:
     def draw(self):
         self.canvas.delete("all")
 
-        drawable_characters: list[tuple[float, float, str]] = []
-        for x, y, c in self.display_list:
+        drawable_words: list[tuple[float, float, str, tkinter.font.Font]] = []
+        for x, y, word, font in self.display_list:
             # padding from bottom
             if y + DEFAULT_VERTICAL_PADDING + self.vstep > self.scroll + self.height:
                 continue
             # padding from top
             if y - DEFAULT_VERTICAL_PADDING < self.scroll:
                 continue
-            drawable_characters.append((x, y, c))
+            drawable_words.append((x, y, word, font))
 
-        lines: dict[float, list[tuple[float, str]]] = {}
-        for x, y, c in drawable_characters:
-            if y not in lines:
-                lines[y] = []
-            lines[y].append((x, c))
 
-        for y, line_chars in lines.items():
-            line_chars.sort(key=lambda item: item[0])
-            total_width = len(line_chars) * self.hstep
-            
-            emoji_positions: list[tuple[float, str]] = []
-            text_segments: list[tuple[float | None, str]] = []
-            current_text = ""
-            text_start_x = None
-            
-            for x, c in line_chars:
+        alternative_drawable_words: list[tuple[float, float, str, tkinter.font.Font]] = []
+        start_x = DEFAULT_HORIZONTAL_PADDING if self.is_ltr else self.width - DEFAULT_HORIZONTAL_PADDING
+
+        emoji_positions: list[tuple[float, float, str]] = []
+        for x, y, word, font in drawable_words:
+            # calculrate exact positions of emojis in the word
+            current_x = x
+            for c in word:
                 if c in emoji_map:
-                    if current_text:
-                        text_segments.append((text_start_x, current_text))
-                        current_text = ""
-                        text_start_x = None
-                    emoji_positions.append((x, c))
+                    emoji_positions.append((current_x, y, c))
+                    current_x += font.measure(" ") 
                 else:
-                    if text_start_x is None:
-                        text_start_x = x
-                    current_text += c
+                    current_x += font.measure(c)
+
+            alternative_word = [
+                c if c not in emoji_map else " " for c in word
+            ]
+            alternative_drawable_words.append(
+                (x, y, "".join(alternative_word), font)
+            )
+
+        line_width: dict[float, float] = {}
+        for x, y, word, font in alternative_drawable_words:
+            if y not in line_width:
+                line_width[y] = 0
+            line_width[y] += font.measure(word)
+            line_width[y] += font.measure(" ")
+
+        
+        for x, y, word, font in alternative_drawable_words:
+            x_pos: float = x + DEFAULT_HORIZONTAL_PADDING
+            if not self.is_ltr:
+                x_pos = start_x - (line_width[y]) + x - DEFAULT_HORIZONTAL_PADDING
+
+            _ = self.canvas.create_text(
+                x_pos,
+                y - self.scroll,
+                text=word,
+                font=font,
+                fill="black",
+                anchor="nw"
+            )
+
+        for x, y, c in emoji_positions:
+            x_pos: float = x + DEFAULT_HORIZONTAL_PADDING
+            if not self.is_ltr:
+                x_pos = start_x + (x - self.hstep) - DEFAULT_HORIZONTAL_PADDING
             
-            if current_text:
-                text_segments.append((text_start_x, current_text))
-            
-            # start from the right edge
-            start_x = \
-                (self.width - total_width - self.hstep) if \
-                    not self.is_ltr else DEFAULT_HORIZONTAL_PADDING
-
-            for x, text in text_segments:
-                if x is None: 
-                    continue
-                x_pos = x + DEFAULT_HORIZONTAL_PADDING 
-
-                if not self.is_ltr:
-                    x_pos = start_x + (x - self.hstep) - DEFAULT_HORIZONTAL_PADDING
-
+            try:
+                self.canvas.create_image(
+                    x_pos,
+                    y - self.scroll,
+                    image=load_emoji_image(emoji_map[c]),
+                    anchor="nw"
+                )
+            except Exception:
                 _ = self.canvas.create_text(
                     x_pos,
                     y - self.scroll,
-                    text=text,
-                    anchor="nw",
-                    font=("Arial", 13),  # Adjust font as needed
+                    text=c,
+                    anchor="nw"
                 )
-            
-            for x, c in emoji_positions:
-                x_pos = x + DEFAULT_HORIZONTAL_PADDING
-                if not self.is_ltr:
-                    x_pos = start_x + (x - self.hstep) - DEFAULT_HORIZONTAL_PADDING
-                
-                try:
-                    self.canvas.create_image(
-                        x_pos,
-                        y - self.scroll,
-                        image=load_emoji_image(emoji_map[c]),
-                        anchor="nw"
-                    )
-                except Exception:
-                    _ = self.canvas.create_text(
-                        x_pos,
-                        y - self.scroll,
-                        text=c,
-                        anchor="nw"
-                    )
 
         # Draw scrollbar
         if self.scroll_height > self.height:
@@ -287,10 +280,10 @@ class Browser:
         tokens = layout_instance.lex(
             self.content, 
         )
-        self.display_list = layout_instance.layout(tokens)
+        display_list = layout_instance.layout(tokens)
 
-        cursor_y = self.layout_list[-1][1] if self.display_list else 0
         self.scroll_height = cursor_y
+        cursor_y: float = display_list[-1][1] if display_list else 0
 
         self.draw()
 
