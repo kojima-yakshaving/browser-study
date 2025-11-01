@@ -8,10 +8,86 @@ from gorushi.constants import (
 from gorushi.font_measure_cache import font_measurer
 from gorushi.node import Tag, Text
 
+
 FONT_CACHE: dict[
     tuple[float, str, str],
     tuple[tkinter.font.Font, tkinter.Label | None]
 ] = {}
+
+
+@dataclass 
+class VerticalAlignContext:
+    restore_size: float = 12.0
+    relative_baseline_y: float = 0.0
+    weight: Literal["normal", "bold"] = "normal"
+    style: Literal["italic", "roman"] = "roman"
+
+
+@dataclass 
+class BufferLine:
+    words: list[tuple[float, float, str, tkinter.font.Font]] = field(default_factory=list)
+    baseline: float = 0.0
+    current_baseline: float = 0.0
+
+    context_stack: list[VerticalAlignContext] = field(default_factory=list)
+
+    def clear(self):
+        self.words.clear()
+
+    def is_empty(self) -> bool:
+        return len(self.words) == 0
+
+    def reset(self):
+        pass
+
+    @property
+    def previous_baseline(self) -> float:
+        if not self.context_stack:
+            return 0
+        return self.context_stack[-1].relative_baseline_y
+
+    def add_word(
+        self, 
+        *,
+        x: float,
+        font: tkinter.font.Font,
+        word: str,
+    ):
+        self.words.append(
+            (x, self.current_baseline - font.metrics("ascent"), word, font)
+        )
+
+    def calculate_bounds(self) -> tuple[float, float]:
+        upper_bound = 0.0
+        lower_bound = 0.0
+
+        for _, y, __, font in self.words:
+            metrics = font.metrics()
+            ascent = metrics["ascent"]
+            descent = metrics["descent"]
+            if y + ascent > upper_bound:
+                upper_bound = y + ascent
+            if y - descent < lower_bound:
+                lower_bound = y - descent
+
+        return upper_bound, lower_bound
+
+    def add_context(self, context: VerticalAlignContext):
+        self.context_stack.append(context)
+        self.current_baseline = context.relative_baseline_y
+
+    def pop_context(self) -> VerticalAlignContext:
+        if not self.context_stack:
+            raise RuntimeError("No context to pop")
+
+        context = self.context_stack.pop()
+        if self.context_stack:
+            self.current_baseline = self.context_stack[-1].relative_baseline_y
+        else:
+            self.current_baseline = 0.0
+
+        return context
+
 
 @dataclass
 class Layout:
@@ -31,6 +107,7 @@ class Layout:
 
     display_list: list[tuple[float,float,str, tkinter.font.Font]] = field(default_factory=list)
     line: list[tuple[float, str, tkinter.font.Font]] = field(default_factory=list)
+    buffer_line: BufferLine = field(default_factory=BufferLine)
 
     @property
     def interpolate_width(self) -> float:
@@ -68,7 +145,11 @@ class Layout:
             self.flush()
             self.cursor_x = self.hstep
         
-        self.line.append((self.cursor_x, word, font))
+        self.buffer_line.add_word(
+            x=self.cursor_x,
+            font=font,
+            word=word,
+        )
         self.cursor_x += w + font_measurer.measure(font, " ")
 
     def process_token(self, tok: Tag | Text):
@@ -92,17 +173,41 @@ class Layout:
         elif tok.tag == "/big":
             self.size -= 4
         elif tok.tag == 'sup':
-            self.flush_previous_token()
-            font = self.get_font(self.size, self.font_weight, self.style)
-            ascent = font.metrics("ascent")
-            self.size -= 6
-            self.cursor_y -= ascent
+            current_font = self.get_font(self.size, self.font_weight, self.style)
+            metrics = current_font.metrics()
+            ascent = metrics["ascent"]
+            baseline_y = self.buffer_line.previous_baseline - int(ascent * 0.25)
+            self.buffer_line.add_context(
+                VerticalAlignContext(
+                    restore_size=self.size,
+                    relative_baseline_y=baseline_y,
+                    weight=self.font_weight,
+                    style=self.style
+                )
+            )
+            previous_size = self.size
+            self.size = int(previous_size * 0.75)
         elif tok.tag == '/sup':
-            self.flush_previous_token()
-            self.size += 6
-            font = self.get_font(self.size, self.font_weight, self.style)
-            ascent = font.metrics("ascent")
-            self.cursor_y += ascent
+            context = self.buffer_line.pop_context()
+            self.size = int(context.restore_size)
+        elif tok.tag == 'sub': 
+            current_font = self.get_font(self.size, self.font_weight, self.style)
+            metrics = current_font.metrics()
+            descent = metrics["descent"]
+            baseline_y = self.buffer_line.previous_baseline + int(descent * 0.25)
+            self.buffer_line.add_context(
+                VerticalAlignContext(
+                    restore_size=self.size,
+                    relative_baseline_y=baseline_y,
+                    weight=self.font_weight,
+                    style=self.style
+                )
+            )
+            previous_size = self.size
+            self.size = int(previous_size * 0.75)
+        elif tok.tag == '/sub':
+            context = self.buffer_line.context_stack.pop()
+            self.size = int(context.restore_size)
         elif tok.tag == "br":
             self.flush()
         elif tok.tag == "/p":
@@ -144,38 +249,21 @@ class Layout:
             self.flush()
             self.cursor_y += self.vstep
 
-    def flush_previous_token(self):
-        if not self.line:
-            return 
-
-        max_ascent = max(
-            [font.metrics("ascent") for x, word, font in self.line]
-        )
-        baseline = self.cursor_y + 1.15 * max_ascent
-        
-        for x, word, font in self.line:
-            y = baseline - font.metrics("ascent")
-            self.display_list.append((x, y, word, font))
-        
-        self.line.clear()
-
-
     def flush(self):
-        if not self.line: 
+        if self.buffer_line.is_empty(): 
             return
-        metrics = [font.metrics() for x, word, font in self.line]
-        max_ascent = max([metric["ascent"] for metric in metrics])
-        baseline = self.cursor_y + 1.15 * max_ascent
 
-        for x, word, font in self.line:
-            y = baseline - font.metrics("ascent")
-            self.display_list.append((x, y, word, font))
+        upper_bound, lower_bound = self.buffer_line.calculate_bounds()
+        baseline = self.cursor_y + upper_bound
 
-        max_descent = max([metric["descent"] for metric in metrics])
-        self.cursor_y = baseline + 1.15 * max_descent
+        for (x, relative_y, word, font) in self.buffer_line.words:
+            self.display_list.append((x, baseline + relative_y, word, font))
+
+        line_height = upper_bound - lower_bound
+        self.cursor_y += int(line_height)
         self.cursor_x = self.hstep
-        self.line.clear()
 
+        self.buffer_line.clear()
 
     def get_font(self, 
         size: int, 
@@ -194,9 +282,15 @@ class Layout:
             FONT_CACHE[key] = (font, None)
         return FONT_CACHE[key][0]
 
+    def reset(self):
+        self.buffer_line.clear()
+        self.buffer_line.reset()
+
     def layout(self, tokens: list[Tag | Text]) -> \
         list[tuple[float,float,str, tkinter.font.Font]]:
+        self.reset()
         self.flush()
+
         for tok in tokens:
             self.process_token(tok)
         
