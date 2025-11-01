@@ -9,7 +9,7 @@ from gorushi.constants import (
 )
 from gorushi.font_measure_cache import font_measurer
 from gorushi.layout import Layout
-from gorushi.renderer import RenderMode, Renderer
+from gorushi.renderer import aho_corasick_matcher
 from gorushi.url import URL
 from gorushi.node import Tag, Text
 
@@ -225,10 +225,11 @@ class Browser:
             if self.center_align:
                 x_pos = (self.width - line_width[y]) / 2 - DEFAULT_HORIZONTAL_PADDING + x
 
+            replaced_word = aho_corasick_matcher.replace_all(word)
             _ = self.canvas.create_text(
                 x_pos,
                 y - self.scroll,
-                text=word,
+                text=replaced_word,
                 font=font,
                 fill="black",
                 anchor="nw"
