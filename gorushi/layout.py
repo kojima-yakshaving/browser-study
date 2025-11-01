@@ -14,6 +14,8 @@ FONT_CACHE: dict[
     tuple[tkinter.font.Font, tkinter.Label | None]
 ] = {}
 
+SOFT_HYPHEN = "-"
+
 
 @dataclass 
 class VerticalAlignContext:
@@ -142,6 +144,28 @@ class Layout:
         w = font_measurer.measure(font, word)
 
         if self.cursor_x + w > self.interpolate_width:
+            part = ""
+            remainder = ""
+            if len(word) >= 4:
+                for i in range(3, len(word)):
+                    part = word[:i] + SOFT_HYPHEN
+                    part_width = font_measurer.measure(font, part)
+                    if self.cursor_x + part_width > self.interpolate_width:
+                        if i == 0:
+                            # word is too long to fit in a single line
+                            part = word
+                            remainder = ""
+                        else:
+                            part = word[:i-1] + SOFT_HYPHEN
+                            remainder = SOFT_HYPHEN + word[i-1:]
+                        break
+                if remainder:
+                    self.buffer_line.add_word(
+                        x=self.cursor_x,
+                        font=font,
+                        word=part,
+                    )
+                    word = remainder
             self.flush()
             self.cursor_x = self.hstep
         
