@@ -67,7 +67,6 @@ class Layout:
         if self.cursor_x + w > self.interpolate_width:
             self.flush()
             self.cursor_x = self.hstep
-
         
         self.line.append((self.cursor_x, word, font))
         self.cursor_x += w + font_measurer.measure(font, " ")
@@ -92,6 +91,18 @@ class Layout:
             self.size += 4
         elif tok.tag == "/big":
             self.size -= 4
+        elif tok.tag == 'sup':
+            self.flush_previous_token()
+            font = self.get_font(self.size, self.font_weight, self.style)
+            ascent = font.metrics("ascent")
+            self.size -= 6
+            self.cursor_y -= ascent
+        elif tok.tag == '/sup':
+            self.flush_previous_token()
+            self.size += 6
+            font = self.get_font(self.size, self.font_weight, self.style)
+            ascent = font.metrics("ascent")
+            self.cursor_y += ascent
         elif tok.tag == "br":
             self.flush()
         elif tok.tag == "/p":
@@ -132,6 +143,22 @@ class Layout:
             self.size = 12
             self.flush()
             self.cursor_y += self.vstep
+
+    def flush_previous_token(self):
+        if not self.line:
+            return 
+
+        max_ascent = max(
+            [font.metrics("ascent") for x, word, font in self.line]
+        )
+        baseline = self.cursor_y + 1.15 * max_ascent
+        
+        for x, word, font in self.line:
+            y = baseline - font.metrics("ascent")
+            self.display_list.append((x, y, word, font))
+        
+        self.line.clear()
+
 
     def flush(self):
         if not self.line: 
