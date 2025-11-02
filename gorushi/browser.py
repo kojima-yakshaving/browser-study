@@ -1,3 +1,4 @@
+from time import time
 import tkinter
 import tkinter.font
 from typing import ClassVar
@@ -178,6 +179,7 @@ class Browser:
         self.draw()
 
     def draw(self):
+        time_start = time()
         self.canvas.delete("all")
 
         drawable_words: list[tuple[float, float, str, tkinter.font.Font]] = []
@@ -268,6 +270,10 @@ class Browser:
                 scrollbar_y + scrollbar_height, 
                 fill="blue"
             )
+
+        end_time = time()
+        print(f"Draw time: {end_time - time_start:.4f} seconds")
+
 
     def load(self, url: URL):
         body = ""
