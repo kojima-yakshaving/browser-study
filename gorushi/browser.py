@@ -10,9 +10,9 @@ from gorushi.constants import (
 )
 from gorushi.font_measure_cache import font_measurer
 from gorushi.layout import Layout
-from gorushi.renderer import aho_corasick_matcher
+from gorushi.parser import HTMLParser
+from gorushi.renderer import RenderMode, Renderer
 from gorushi.url import URL
-from gorushi.node import Tag, Text
 
 def get_project_root() -> str:
     import os
@@ -160,10 +160,9 @@ class Browser:
             hstep = self.hstep,
             vstep = self.vstep,
         )
-        tokens = layout_instance.lex(
-            self.content,
-        )
-        self.display_list = layout_instance.layout(tokens)
+        nodes = HTMLParser(self.content).parse()
+        self.display_list = layout_instance.layout(nodes)
+
 
         self.draw()
 
@@ -196,6 +195,7 @@ class Browser:
         start_x = DEFAULT_HORIZONTAL_PADDING if self.is_ltr else self.width - DEFAULT_HORIZONTAL_PADDING
 
         emoji_positions: list[tuple[float, float, str]] = []
+
         for x, y, word, font in drawable_words:
             # calculrate exact positions of emojis in the word
             current_x = x
@@ -227,11 +227,10 @@ class Browser:
             if self.center_align:
                 x_pos = (self.width - line_width[y]) / 2 - DEFAULT_HORIZONTAL_PADDING + x
 
-            replaced_word = aho_corasick_matcher.replace_all(word)
             _ = self.canvas.create_text(
                 x_pos,
                 y - self.scroll,
-                text=replaced_word,
+                text=word,
                 font=font,
                 fill="black",
                 anchor="nw"
@@ -291,12 +290,11 @@ class Browser:
             vstep = self.vstep,
             is_ltr = self.is_ltr,
         )
-        tokens = layout_instance.lex(
-            self.content, 
-        )
-        display_list = layout_instance.layout(tokens)
 
-        cursor_y: float = display_list[-1][1] if display_list else 0
+        nodes = HTMLParser(self.content).parse()
+        self.display_list = layout_instance.layout(nodes)
+
+        cursor_y: float = self.display_list[-1][1] if self.display_list else 0
         self.scroll_height = cursor_y + DEFAULT_VERTICAL_PADDING + 2 * self.vstep
 
         self.draw()

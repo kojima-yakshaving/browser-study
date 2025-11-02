@@ -6,7 +6,8 @@ from gorushi.constants import (
     DEFAULT_HEIGHT, DEFAULT_HORIZONTAL_PADDING, DEFAULT_HSTEP, DEFAULT_VSTEP, DEFAULT_WIDTH
 )
 from gorushi.font_measure_cache import font_measurer
-from gorushi.node import Tag, Text
+from gorushi.node import Element, Node, Text
+from gorushi.parser import print_tree
 
 
 FONT_CACHE: dict[
@@ -105,6 +106,8 @@ class Layout:
     hstep: float = DEFAULT_HSTEP 
     vstep: float = DEFAULT_VSTEP
 
+    nodes: Node | None = None
+
     size: int = 12
 
     font_weight: Literal["normal", "bold"] = "normal"
@@ -127,29 +130,25 @@ class Layout:
             return self.hstep
         return self.hstep + (self.pre_tag_depth * PRE_TAG_INDENT)
 
-    def lex(self, body: str):
-        out: list[Tag | Text] = []
-
-        buffer = ""
-        in_tag = False
-
-        for c in body:
-            if c == "<":
-                in_tag = True
-                if buffer:
-                    out.append(Text(buffer))
-                buffer = ""
-            elif c == ">":
-                in_tag = False
-                out.append(Tag(buffer))
-                buffer = ""
+    def recurse(self, tree: Node):
+        if isinstance(tree, Text):
+            if self.pre_tag_depth > 0:
+                lines = tree.text.splitlines(keepends=True)
+                for line in lines:
+                    self.process_word(line)
+                    if line.endswith('\n'):
+                        self.flush()
             else:
-                buffer += c
+                for word in tree.text.split():
+                    self.process_word(
+                        word if not self.small_caps else word.upper()
+                    )
 
-        if not in_tag and buffer:
-            out.append(Text(buffer))
-
-        return out
+        elif isinstance(tree, Element):
+            self.open_tag(tree.tag)
+            for child in tree.children:
+                self.recurse(child)
+            self.close_tag(tree.tag)
 
     def process_word(self, word: str):
         font = self.get_font(self.size, self.font_weight, self.style)
@@ -188,42 +187,19 @@ class Layout:
         )
         self.cursor_x += w + font_measurer.measure(font, " ")
 
-    def process_token(self, tok: Tag | Text):
-        if isinstance(tok, Text):
-            if self.pre_tag_depth > 0:
-                lines = tok.text.splitlines(keepends=True)
-                for line in lines:
-                    self.process_word(line)
-                    if line.endswith('\n'):
-                        self.flush()
-            else:
-                for word in tok.text.split():
-                    self.process_word(
-                        word if not self.small_caps else word.upper()
-                    )
-        elif tok.tag == 'i': 
+    def open_tag(self, tag: str):
+        if tag == "i":
             self.style = "italic"
-        elif tok.tag == '/i':
-            self.style = "roman"
-        elif tok.tag == 'b':
+        elif tag == "b":
             self.font_weight = "bold"
-        elif tok.tag == '/b':
-            self.font_weight = "normal"
-        elif tok.tag == "small":
-            self.size -= 2
-        elif tok.tag == "/small":
-            self.size += 2
-        elif tok.tag == "big":
+        elif tag == "small":
+            self.size -= 2 
+        elif tag == "big":
             self.size += 4
-        elif tok.tag == "/big":
-            self.size -= 4
-        elif tok.tag == "abbr":
+        elif tag == "abbr":
             self.size -= 2
-            self.small_caps = True
-        elif tok.tag == "/abbr":
-            self.size += 2
-            self.small_caps = False
-        elif tok.tag == 'sup':
+            self.small_caps = True 
+        elif tag == 'sup':
             current_font = self.get_font(self.size, self.font_weight, self.style)
             metrics = current_font.metrics()
             ascent = metrics["ascent"]
@@ -238,10 +214,7 @@ class Layout:
             )
             previous_size = self.size
             self.size = int(previous_size * 0.75)
-        elif tok.tag == '/sup':
-            context = self.buffer_line.pop_context()
-            self.size = int(context.restore_size)
-        elif tok.tag == 'sub': 
+        elif tag == "sub": 
             current_font = self.get_font(self.size, self.font_weight, self.style)
             metrics = current_font.metrics()
             descent = metrics["descent"]
@@ -256,55 +229,72 @@ class Layout:
             )
             previous_size = self.size
             self.size = int(previous_size * 0.75)
-        elif tok.tag == '/sub':
-            context = self.buffer_line.context_stack.pop()
-            self.size = int(context.restore_size)
-        elif tok.tag == "br":
+        elif tag == 'br':
             self.flush()
             self.cursor_y += self.vstep
-        elif tok.tag == "/p":
-            self.flush()
-            self.cursor_y += self.vstep
-        elif tok.tag == "pre":
+        elif tag == 'pre':
             self.flush()
             self.pre_tag_depth += 1
-        elif tok.tag == "/pre":
-            self.flush()
-            self.pre_tag_depth = max(0, self.pre_tag_depth - 1)
-        elif tok.tag == "/blockqoute":
-            self.flush()
-            self.cursor_y += self.vstep
-        elif tok.tag == "h1":
+        elif tag == 'h1':
             self.flush()
             self.size = 24
             self.cursor_y += self.vstep
-        elif tok.tag == "h2": 
+        elif tag == 'h2':
             self.flush()
             self.size = 20
-            self.cursor_y += self.vstep
-        elif tok.tag == "h3": 
+            self.cursor_y += self.vstep 
+        elif tag == 'h3':
             self.flush()
             self.size = 16
-            self.cursor_y += self.vstep
-        elif tok.tag == "h4": 
+            self.cursor_y += self.vstep 
+        elif tag == 'h4':
             self.flush()
             self.size = 14
             self.cursor_y += self.vstep
-        elif tok.tag == "/h1":
-            self.size = 12
+        pass 
+
+    def close_tag(self, tag: str):
+        if tag == "i":
+            self.style = "roman"
+        elif tag == "b":
+            self.font_weight = "normal"
+        elif tag == "small":
+            self.size += 2
+        elif tag == "big":
+            self.size -= 4
+        elif tag == "abbr":
+            self.size += 2
+            self.small_caps = False
+        elif tag == 'sup':
+            context = self.buffer_line.pop_context()
+            self.size = int(context.restore_size)
+        elif tag == 'sub':
+            context = self.buffer_line.pop_context()
+            self.size = int(context.restore_size)
+        elif tag == "p":
             self.flush()
             self.cursor_y += self.vstep
-        elif tok.tag == "/h2":
-            self.size = 12
+        elif tag == 'pre':
+            self.flush()
+            self.pre_tag_depth = max(0, self.pre_tag_depth - 1)
+        elif tag == 'blockqoute':
             self.flush()
             self.cursor_y += self.vstep
-        elif tok.tag == "/h3":
-            self.size = 12
+        elif tag == 'h1':
             self.flush()
+            self.size = 12
             self.cursor_y += self.vstep
-        elif tok.tag == "/h4":
-            self.size = 12
+        elif tag == 'h2':
             self.flush()
+            self.size = 12
+            self.cursor_y += self.vstep 
+        elif tag == 'h3':
+            self.flush()
+            self.size = 12
+            self.cursor_y += self.vstep
+        elif tag == 'h4':
+            self.flush()
+            self.size = 12
             self.cursor_y += self.vstep
 
     def flush(self):
@@ -344,13 +334,13 @@ class Layout:
         self.buffer_line.clear()
         self.buffer_line.reset()
 
-    def layout(self, tokens: list[Tag | Text]) -> \
+    def layout(self, nodes: Node) -> \
         list[tuple[float,float,str, tkinter.font.Font]]:
         self.reset()
         self.flush()
 
-        for tok in tokens:
-            self.process_token(tok)
+        print_tree(nodes)
+        self.recurse(nodes)
         
         self.flush()
 
