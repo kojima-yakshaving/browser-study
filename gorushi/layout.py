@@ -194,7 +194,8 @@ class Layout:
                 lines = tok.text.splitlines(keepends=True)
                 for line in lines:
                     self.process_word(line)
-                    self.flush()
+                    if line.endswith('\n'):
+                        self.flush()
             else:
                 for word in tok.text.split():
                     self.process_word(
