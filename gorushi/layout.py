@@ -260,6 +260,7 @@ class Layout:
             self.size = int(context.restore_size)
         elif tok.tag == "br":
             self.flush()
+            self.cursor_y += self.vstep
         elif tok.tag == "/p":
             self.flush()
             self.cursor_y += self.vstep
