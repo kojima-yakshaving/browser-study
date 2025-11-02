@@ -111,6 +111,8 @@ class Layout:
     line: list[tuple[float, str, tkinter.font.Font]] = field(default_factory=list)
     buffer_line: BufferLine = field(default_factory=BufferLine)
 
+    small_caps: bool = False
+
     @property
     def interpolate_width(self) -> float:
         return self.width - 2 * self.hstep - 2 * DEFAULT_HORIZONTAL_PADDING * 2
@@ -179,7 +181,10 @@ class Layout:
     def process_token(self, tok: Tag | Text):
         if isinstance(tok, Text):
             for word in tok.text.split():
-                self.process_word(word)
+                print(word if not self.small_caps else word.upper())
+                self.process_word(
+                    word if not self.small_caps else word.upper()
+                )
         elif tok.tag == 'i': 
             self.style = "italic"
         elif tok.tag == '/i':
@@ -196,6 +201,12 @@ class Layout:
             self.size += 4
         elif tok.tag == "/big":
             self.size -= 4
+        elif tok.tag == "abbr":
+            self.size -= 2
+            self.small_caps = True
+        elif tok.tag == "/abbr":
+            self.size += 2
+            self.small_caps = False
         elif tok.tag == 'sup':
             current_font = self.get_font(self.size, self.font_weight, self.style)
             metrics = current_font.metrics()
