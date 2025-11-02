@@ -16,6 +16,7 @@ FONT_CACHE: dict[
 
 SOFT_HYPHEN = "-"
 
+PRE_TAG_INDENT = 20
 
 @dataclass 
 class VerticalAlignContext:
@@ -96,6 +97,8 @@ class Layout:
     cursor_x: float = DEFAULT_HSTEP
     cursor_y: float = DEFAULT_VSTEP
 
+    is_ltr: bool = True
+
     width: float = DEFAULT_WIDTH
     height: float = DEFAULT_HEIGHT
 
@@ -111,11 +114,18 @@ class Layout:
     line: list[tuple[float, str, tkinter.font.Font]] = field(default_factory=list)
     buffer_line: BufferLine = field(default_factory=BufferLine)
 
+    pre_tag_depth: int = 0
+
     small_caps: bool = False
 
     @property
     def interpolate_width(self) -> float:
         return self.width - 2 * self.hstep - 2 * DEFAULT_HORIZONTAL_PADDING * 2
+
+    def indented_horizontal_start(self) -> float:
+        if not self.is_ltr: 
+            return self.hstep
+        return self.hstep + (self.pre_tag_depth * PRE_TAG_INDENT)
 
     def lex(self, body: str):
         out: list[Tag | Text] = []
@@ -169,7 +179,7 @@ class Layout:
                     )
                     word = remainder
             self.flush()
-            self.cursor_x = self.hstep
+            self.cursor_x = self.indented_horizontal_start()
         
         self.buffer_line.add_word(
             x=self.cursor_x,
@@ -180,11 +190,16 @@ class Layout:
 
     def process_token(self, tok: Tag | Text):
         if isinstance(tok, Text):
-            for word in tok.text.split():
-                print(word if not self.small_caps else word.upper())
-                self.process_word(
-                    word if not self.small_caps else word.upper()
-                )
+            if self.pre_tag_depth > 0:
+                lines = tok.text.splitlines(keepends=True)
+                for line in lines:
+                    self.process_word(line)
+                    self.flush()
+            else:
+                for word in tok.text.split():
+                    self.process_word(
+                        word if not self.small_caps else word.upper()
+                    )
         elif tok.tag == 'i': 
             self.style = "italic"
         elif tok.tag == '/i':
@@ -248,6 +263,12 @@ class Layout:
         elif tok.tag == "/p":
             self.flush()
             self.cursor_y += self.vstep
+        elif tok.tag == "pre":
+            self.flush()
+            self.pre_tag_depth += 1
+        elif tok.tag == "/pre":
+            self.flush()
+            self.pre_tag_depth = max(0, self.pre_tag_depth - 1)
         elif tok.tag == "/blockqoute":
             self.flush()
             self.cursor_y += self.vstep
@@ -296,7 +317,7 @@ class Layout:
 
         line_height = upper_bound - lower_bound
         self.cursor_y += int(line_height)
-        self.cursor_x = self.hstep
+        self.cursor_x = self.indented_horizontal_start()
 
         self.buffer_line.clear()
 

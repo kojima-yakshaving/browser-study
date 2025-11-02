@@ -289,6 +289,7 @@ class Browser:
             height = self.height,
             hstep = self.hstep,
             vstep = self.vstep,
+            is_ltr = self.is_ltr,
         )
         tokens = layout_instance.lex(
             self.content, 
