@@ -31,27 +31,56 @@ class HTMLTokenizerStateMachine:
         self.buffer = []
         return result
 
+    def next_state(self, next_char: str) -> HTMLTokenizerState:
+        tmp_buffer = self.buffer[-10:] + [next_char]
+        if self.state == HTMLTokenizerState.TEXT:
+            if next_char == '<':
+                return HTMLTokenizerState.TAG_OPEN
+            else:
+                return HTMLTokenizerState.TEXT
+        elif self.state == HTMLTokenizerState.TAG_OPEN:
+            if tmp_buffer[-4:] == list("<!--"):
+                return HTMLTokenizerState.COMMENT
+            elif tmp_buffer[-8:] == list("<script>"):
+                return HTMLTokenizerState.SCRIPT_DATA
+            elif next_char == '>':
+                return HTMLTokenizerState.TEXT
+        elif self.state == HTMLTokenizerState.COMMENT:
+            if tmp_buffer[-3:] == list("-->"):
+                return HTMLTokenizerState.TEXT
+            else:
+                return HTMLTokenizerState.COMMENT
+        elif self.state == HTMLTokenizerState.SCRIPT_DATA:
+            if tmp_buffer[-9:] == list("</script>"):
+                return HTMLTokenizerState.TEXT
+            else:
+                return HTMLTokenizerState.SCRIPT_DATA
+
+        return self.state
+
+    def trigger_action(
+        self, 
+        from_state: HTMLTokenizerState, 
+        to_state: HTMLTokenizerState
+    ) -> None:
+        if from_state == HTMLTokenizerState.TAG_OPEN \
+            and to_state == HTMLTokenizerState.SCRIPT_DATA:
+            # Remove <script> from buffer
+            self.buffer = self.buffer[:-8]
+        elif from_state == HTMLTokenizerState.COMMENT \
+            and to_state == HTMLTokenizerState.TEXT:
+            # Remove <!--...--> from buffer
+            self.buffer = self.buffer[:-3]
+        elif from_state == HTMLTokenizerState.SCRIPT_DATA \
+            and to_state == HTMLTokenizerState.TEXT:
+            # Remove </script> from buffer
+            self.buffer = self.buffer[:-9]
+
+
     def process_char(self, c: str) -> None:
+        next_state = self.next_state(c)
         self.buffer.append(c)
 
-        if self.state == HTMLTokenizerState.TEXT:
-            if c == '<':
-                self.state = HTMLTokenizerState.TAG_OPEN
-        elif self.state == HTMLTokenizerState.TAG_OPEN:
-            # Handle script tag start
-            if self.buffer[-8:] == list("<script>"):
-                self.state = HTMLTokenizerState.SCRIPT_DATA
-                self.buffer = self.buffer[:-8]
-            # Handle comment start
-            elif self.buffer[-4:] == list("<!--"):
-                self.state = HTMLTokenizerState.COMMENT
-            elif c == '>':
-                self.state = HTMLTokenizerState.TEXT 
-        elif self.state == HTMLTokenizerState.COMMENT:
-            if self.buffer[-3:] == list("-->"):
-                self.state = HTMLTokenizerState.TEXT
-                _ = self.flush_buffer()
-        elif self.state == HTMLTokenizerState.SCRIPT_DATA:
-            if self.buffer[-9:] == list("</script>"):
-                self.state = HTMLTokenizerState.TEXT
-                self.buffer = self.buffer[:-9]
+        self.trigger_action(self.state, next_state)
+
+        self.state = next_state

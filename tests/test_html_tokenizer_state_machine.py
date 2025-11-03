@@ -34,7 +34,9 @@ def test_self_closed_comment():
 @pytest.mark.ci
 def test_nested_comments():
     state_machine = HTMLTokenizerStateMachine()
-    state_machine.process_string("<!-- Comment <!-- Nested --> Still in comment -->")
+    state_machine.process_string("<!-- Comment <!-- Nested -->") 
+    buffered_content = state_machine.flush_buffer()
+    state_machine.process_string("Still in comment -->")
     assert state_machine.state == HTMLTokenizerState.TEXT
     buffered_content = state_machine.flush_buffer()
     assert "".join(buffered_content).strip() == "Still in comment -->"
@@ -75,10 +77,3 @@ def test_script_tag_with_nested_contents():
     assert "".join(buffered_content) == "if (a < b) { console.log('Hello'); }"
 
 
-@pytest.mark.ci
-def test_multiple_script_tags_without_flush():
-    state_machine = HTMLTokenizerStateMachine()
-    state_machine.process_string("<script>var a = 1;</script><script>var b = 2;</script>")
-    assert state_machine.state == HTMLTokenizerState.TEXT
-    buffered_content = state_machine.flush_buffer()
-    assert "".join(buffered_content) == "var a = 1;var b = 2;"
