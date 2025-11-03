@@ -32,7 +32,7 @@ class HTMLTokenizerStateMachine:
         return result
 
     def next_state(self, next_char: str) -> HTMLTokenizerState:
-        tmp_buffer = self.buffer[-10:] + [next_char]
+        tmp_buffer = [*self.buffer, next_char]
         if self.state == HTMLTokenizerState.TEXT:
             if next_char == '<':
                 return HTMLTokenizerState.TAG_OPEN
