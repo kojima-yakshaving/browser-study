@@ -13,7 +13,14 @@ class Element(Node):
     parent: Node | None = None
 
     def __repr__(self) -> str:
-        return f"<{self.tag}>"
+        return f"<{self.tag} {self.attribute_str}>"
+
+    @property
+    def attribute_str(self) -> str:
+        attrs: list[str] = []
+        for key, value in self.attributes.items():
+            attrs.append(f'{key}="{value}"')
+        return " ".join(attrs)
 
 
 @dataclass
