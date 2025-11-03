@@ -25,17 +25,44 @@ class HTMLParser:
     def parse(self) -> Node:
         text = ""
         in_tag = False
+        in_comment = False
+        stack: list[str] = []
 
         for c in self.body:
+            if in_tag and len(stack) >= 0 and (
+                (stack[-1] == '<' and c == '!')
+                or (stack[-2:] == ['<', '!'] and c == '-')
+                or (stack[-3:] == ['<', '!', '-'] and c == '-')
+            ):
+                if (stack[-3:] == ['<', '!', '-'] and c == '-'):
+                    in_comment = True
+                stack.append(c)
+                continue
+
+            if in_comment:
+                if stack[-2:] == ['-', '-'] and c == '>':
+                    in_comment = False
+                    in_tag = False
+                    stack = []
+                else:
+                    stack.append(c)
+                continue
+
+                
             if c == '<': 
+                stack.append(c)
                 in_tag = True 
                 if text:
                     self.add_text(text)
                 text = ""
             elif c == '>':
-                in_tag = False
-                self.add_tag(text)
-                text = ""
+                if not in_tag:
+                    text += c
+                else:
+                    in_tag = False
+                    self.add_tag(text)
+                    text = ""
+                    stack = []
             else:
                 text += c
 
