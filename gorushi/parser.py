@@ -85,6 +85,10 @@ class HTMLParser:
             elif open_tags == ['html', 'head'] \
                     and tag not in ['/head'] + self.HEAD_TAGS:
                 self.add_tag('/head')
+            elif len(open_tags) > 0 and open_tags[-1] == 'p' and tag == 'p':
+                self.add_tag('/p')
+            elif len(open_tags) > 0 and open_tags[-1] == 'li' and tag == 'li':
+                self.add_tag('/li')
             else:
                 break
 
@@ -129,6 +133,7 @@ class HTMLParser:
             if parent:
                 parent.children.append(node)
         else:
+            self.implicit_tags(tag)
             parent = self.unfinished[-1] if self.unfinished else None
             node = Element(tag=tag, parent=parent, attributes=attributes)
             self.unfinished.append(node)
