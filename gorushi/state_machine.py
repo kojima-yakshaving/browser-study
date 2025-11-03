@@ -22,9 +22,15 @@ class HTMLTokenizerStateMachine:
     """
     This method is used for only testing purposes.
     """
-    def process_string(self, s: str) -> None:
+    def process_string(self, s: str) -> str:
+        tok: tuple[str,str] | None = None
         for c in s:
-            _ = self.feed(c)
+            tok = self.feed(c)
+
+        if tok is None:
+            return ""
+        _, result = tok
+        return result
 
     def flush_buffer(self) -> str:
         result = "".join(self.buffer)
