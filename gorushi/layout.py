@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 from gorushi.constants import (
-    DEFAULT_HEIGHT, DEFAULT_HORIZONTAL_PADDING, DEFAULT_HSTEP, DEFAULT_VSTEP, DEFAULT_WIDTH
+    DEFAULT_HEIGHT, DEFAULT_HORIZONTAL_PADDING, DEFAULT_HSTEP, DEFAULT_VERTICAL_PADDING, DEFAULT_VSTEP, DEFAULT_WIDTH
 )
 from gorushi.font_measure_cache import font_measurer
 from gorushi.node import Element, Node, Text
@@ -96,7 +96,7 @@ class BufferLine:
 @dataclass
 class Layout:
     cursor_x: float = DEFAULT_HSTEP
-    cursor_y: float = DEFAULT_VSTEP
+    cursor_y: float = DEFAULT_VSTEP + DEFAULT_VERTICAL_PADDING
 
     is_ltr: bool = True
 
