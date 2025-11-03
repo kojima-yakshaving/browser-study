@@ -24,7 +24,7 @@ class HTMLTokenizerStateMachine:
     """
     def process_string(self, s: str) -> None:
         for c in s:
-            self.process_char(c)
+            _ = self.feed(c)
 
     def flush_buffer(self) -> str:
         result = "".join(self.buffer)
@@ -62,25 +62,44 @@ class HTMLTokenizerStateMachine:
         self, 
         from_state: HTMLTokenizerState, 
         to_state: HTMLTokenizerState
-    ) -> None:
+    ) -> tuple[str,str] | None:
         if from_state == HTMLTokenizerState.TAG_OPEN \
             and to_state == HTMLTokenizerState.SCRIPT_DATA:
             # Remove <script> from buffer
             self.buffer = self.buffer[:-8]
+            return ("tag", "script")
+        elif from_state == HTMLTokenizerState.TAG_OPEN \
+            and to_state == HTMLTokenizerState.TEXT:
+            # Remove <...> from buffer 
+            content = "".join(self.buffer[1:-1]).strip()
+            self.buffer = self.buffer[:-len(content)-2]
+            return ("tag", content)
+        elif from_state == HTMLTokenizerState.TEXT \
+            and to_state == HTMLTokenizerState.TAG_OPEN:
+            # Flush text before <
+            content = "".join(self.buffer[:-1])
+            self.buffer = self.buffer[-1:]
+            return ("text", content)
         elif from_state == HTMLTokenizerState.COMMENT \
             and to_state == HTMLTokenizerState.TEXT:
             # Remove <!--...--> from buffer
-            self.buffer = self.buffer[:-3]
+            self.buffer = self.buffer
+            return ("comment", "".join(self.buffer))
         elif from_state == HTMLTokenizerState.SCRIPT_DATA \
             and to_state == HTMLTokenizerState.TEXT:
             # Remove </script> from buffer
             self.buffer = self.buffer[:-9]
+            return ("script", "".join(self.buffer))
+        
+        return None
 
 
-    def process_char(self, c: str) -> None:
+    def feed(self, c: str) -> tuple[str,str] | None:
         next_state = self.next_state(c)
         self.buffer.append(c)
 
-        self.trigger_action(self.state, next_state)
+        result = self.trigger_action(self.state, next_state)
 
         self.state = next_state
+
+        return result

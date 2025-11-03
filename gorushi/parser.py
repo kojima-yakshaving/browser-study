@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from gorushi.constants import SELF_CLOSING_TAGS
 from gorushi.node import Element, Node, Text
 from gorushi.renderer import aho_corasick_matcher
+from gorushi.state_machine import HTMLTokenizerState, HTMLTokenizerStateMachine
 
 
 def print_tree(node: Node, indent: int = 0) -> None:
@@ -18,56 +19,30 @@ class HTMLParser:
         'link', 'meta', 'script', 'style', 'title'
     ]
 
-
     body: str = ""
     unfinished: list[Element] = field(default_factory=list)
 
-    def parse(self) -> Node:
-        text = ""
-        in_tag = False
-        in_comment = False
-        stack: list[str] = []
 
+    def parse(self) -> Element:
+        state_machine = HTMLTokenizerStateMachine()
         for c in self.body:
-            if in_tag and len(stack) >= 0 and (
-                (stack[-1] == '<' and c == '!')
-                or (stack[-2:] == ['<', '!'] and c == '-')
-                or (stack[-3:] == ['<', '!', '-'] and c == '-')
-            ):
-                if (stack[-3:] == ['<', '!', '-'] and c == '-'):
-                    in_comment = True
-                stack.append(c)
-                continue
+            output = state_machine.feed(c)
+            if output:
+                kind, value = output
+                if kind == "text":
+                    if value:
+                        self.add_text(value)
+                elif kind == "tag":
+                    self.add_tag(value)
+                elif kind == "script":
+                    self.add_text(value)
+                elif kind == "comment":
+                    _comment = state_machine.flush_buffer()
 
-            if in_comment:
-                if stack[-2:] == ['-', '-'] and c == '>':
-                    in_comment = False
-                    in_tag = False
-                    stack = []
-                else:
-                    stack.append(c)
-                continue
-
-                
-            if c == '<': 
-                stack.append(c)
-                in_tag = True 
-                if text:
-                    self.add_text(text)
-                text = ""
-            elif c == '>':
-                if not in_tag:
-                    text += c
-                else:
-                    in_tag = False
-                    self.add_tag(text)
-                    text = ""
-                    stack = []
-            else:
-                text += c
-
-        if not in_tag and text:
-            self.add_text(text)
+        if state_machine.state == HTMLTokenizerState.TEXT:
+            text = state_machine.flush_buffer()
+            if text:
+                self.add_text(text)
 
         return self.finish()
 
@@ -139,7 +114,7 @@ class HTMLParser:
             self.unfinished.append(node)
         pass
 
-    def finish(self) -> Node:
+    def finish(self) -> Element:
         if not self.unfinished:
             self.implicit_tags(None)
 
