@@ -13,6 +13,8 @@ class Element(Node):
     parent: Node | None = None
 
     def __repr__(self) -> str:
+        if not self.attributes:
+            return f"<{self.tag}>"
         return f"<{self.tag} {self.attribute_str}>"
 
     @property
