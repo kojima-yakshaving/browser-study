@@ -68,6 +68,7 @@ def test_closing_script_tag():
     buffered_content = state_machine.flush_buffer()
     assert "".join(buffered_content) == 'var a = 1;'
 
+
 @pytest.mark.ci
 def test_script_tag_with_nested_contents():
     state_machine = HTMLTokenizerStateMachine()
@@ -76,4 +77,29 @@ def test_script_tag_with_nested_contents():
     buffered_content = state_machine.flush_buffer()
     assert "".join(buffered_content) == "if (a < b) { console.log('Hello'); }"
 
+
+@pytest.mark.ci 
+def test_tag_attributes_handling():
+    state_machine = HTMLTokenizerStateMachine()
+    result = state_machine.process_string("<div class='container' id=\"main\">")
+    assert state_machine.state == HTMLTokenizerState.TEXT
+    assert "".join(result) == "div class='container' id=\"main\""
+
+
+@pytest.mark.ci 
+def test_incomplete_tag_attribute_handling():
+    state_machine = HTMLTokenizerStateMachine()
+    state_machine.process_string("<div class='contai")
+    assert state_machine.state == HTMLTokenizerState.ATTRIBUTE_OPEN
+
+    state_machine.process_string("ner' id=\"main\">")
+    assert state_machine.state == HTMLTokenizerState.TEXT
+
+
+@pytest.mark.ci 
+def test_tailwind_style_class_parsing():
+    state_machine = HTMLTokenizerStateMachine()
+    result = state_machine.process_string("<div class=\"bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded\">")
+    assert state_machine.state == HTMLTokenizerState.TEXT
+    assert "".join(result) == "div class=\"bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded\""
 

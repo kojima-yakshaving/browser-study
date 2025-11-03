@@ -17,7 +17,7 @@ class HTMLTokenizerState(Enum):
 class HTMLTokenizerStateMachine:
     buffer: list[str] = field(default_factory=list)
     state: HTMLTokenizerState = HTMLTokenizerState.TEXT
-    
+    attribution_qoute_char: str | None = None
 
     """
     This method is used for only testing purposes.
@@ -51,6 +51,19 @@ class HTMLTokenizerStateMachine:
                 return HTMLTokenizerState.SCRIPT_DATA
             elif next_char == '>':
                 return HTMLTokenizerState.TEXT
+            elif (
+                tmp_buffer[-2] == '=' and (next_char == '"' or next_char == "'")
+            ):
+                self.attribution_qoute_char = next_char
+                return HTMLTokenizerState.ATTRIBUTE_OPEN
+        elif self.state == HTMLTokenizerState.ATTRIBUTE_OPEN:
+            if (
+                tmp_buffer[-1] == self.attribution_qoute_char 
+                and not tmp_buffer[-2] == '\\'
+            ):
+                return HTMLTokenizerState.TAG_OPEN
+            else:
+                return HTMLTokenizerState.ATTRIBUTE_OPEN
         elif self.state == HTMLTokenizerState.COMMENT:
             if tmp_buffer[-3:] == list("-->"):
                 return HTMLTokenizerState.TEXT
