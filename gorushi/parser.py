@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Literal, override
 
 from gorushi.constants import SELF_CLOSING_TAGS
 from gorushi.node import Element, Node, Text
@@ -65,7 +65,6 @@ class AttributesExtractor:
             attributes[attibute_name.casefold()] = attibute_value
 
         return attributes
-
 
 
 @dataclass
@@ -174,4 +173,49 @@ class HTMLParser:
             parent = self.unfinished[-1]
             parent.children.append(node)
         return self.unfinished.pop()
+
+
+@dataclass 
+class HTMLViewSourceParser(HTMLParser):
+    @override
+    def parse(self) -> Element:
+        state_machine = HTMLTokenizerStateMachine()
+        for c in self.body:
+            output = state_machine.feed(c)
+            if c == '\n':
+                self.add_tag('br')
+            if output:
+                kind, value = output
+                if kind == "text":
+                    if value:
+                        self.add_tag('b')
+                        self.add_text(value)
+                        self.add_tag('/b')
+                elif kind == "tag":
+                    if value.startswith('/'):
+                        self.add_tag("/span")
+                    else:
+                        self.add_tag("span class=\"html-tag\"")
+                    if value.startswith('pre'):
+                        self.add_tag('pre')
+                        self.add_text(f'<{value}>')
+                    elif value.startswith('/pre'):
+                        self.add_tag('/pre')
+                        self.add_text(f'<{value}>')
+                    else:
+                        self.add_text(f'<{value}>')
+                elif kind == "script":
+                    self.add_text(value)
+                elif kind == "comment":
+                    _comment = state_machine.flush_buffer()
+
+        if state_machine.state == HTMLTokenizerState.TEXT:
+            text = state_machine.flush_buffer()
+            if text:
+                self.add_tag('b')
+                self.add_text(text)
+
+        return self.finish()
+
+
 

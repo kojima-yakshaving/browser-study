@@ -10,7 +10,7 @@ from gorushi.constants import (
 )
 from gorushi.font_measure_cache import font_measurer
 from gorushi.layout import Layout
-from gorushi.parser import HTMLParser
+from gorushi.parser import HTMLParser, HTMLViewSourceParser
 from gorushi.renderer import RenderMode, Renderer
 from gorushi.url import URL
 
@@ -114,6 +114,8 @@ class Browser:
     is_ltr: bool
     center_align: bool = False
 
+    view_source: bool = False
+
     def __init__(
         self,
         *,
@@ -160,7 +162,10 @@ class Browser:
             hstep = self.hstep,
             vstep = self.vstep,
         )
-        nodes = HTMLParser(self.content).parse()
+        if self.view_source:
+            nodes = HTMLViewSourceParser(self.content).parse()
+        else:
+            nodes = HTMLParser(self.content).parse()
         self.display_list = layout_instance.layout(nodes)
 
 
@@ -282,6 +287,7 @@ class Browser:
         else:
             body = ""
         self.content = body
+        self.view_source = url.view_source
 
         layout_instance = Layout(
             width = self.width,
@@ -290,8 +296,11 @@ class Browser:
             vstep = self.vstep,
             is_ltr = self.is_ltr,
         )
-
-        nodes = HTMLParser(self.content).parse()
+        
+        if self.view_source:
+            nodes = HTMLViewSourceParser(self.content).parse()
+        else:
+            nodes = HTMLParser(self.content).parse()
         self.display_list = layout_instance.layout(nodes)
 
         cursor_y: float = self.display_list[-1][1] if self.display_list else 0
