@@ -1,9 +1,12 @@
 import tkinter
+import sys 
 import argparse
 
 from gorushi.browser import Browser
 from gorushi.url import URL
 
+# recursion limit increase for deep HTML trees
+sys.setrecursionlimit(5000)
 
 argparser = argparse.ArgumentParser(
     description="A simple GUI web browser."
