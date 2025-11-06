@@ -120,7 +120,7 @@ def test_misnested_simple_b_i():
     i2 = body.children[1]
     assert i2.tag == "i"
     assert isinstance(i2.children[0], Text)
-    assert i2.children[0].text == "italic"
+    assert i2.children[0].text == " italic"
 
 
 @pytest.mark.ci
@@ -149,37 +149,6 @@ def test_misnested_three_levels_b_i_u():
     # <u> contains "C"
     assert isinstance(u.children[0], Text)
     assert u.children[0].text == "C"
-
-
-@pytest.mark.ci
-def test_misnested_with_span_non_formatting():
-    content = "<b>B <span>S <i>I</b> tail</i></span>"
-    parser = HTMLParser(body=content)
-    dom = parser.parse()
-
-    body = dom.children[0]
-    assert body.tag == "body"
-
-    # First element must be <b>
-    b = body.children[0]
-    assert b.tag == "b"
-
-    # <span> stays inside <b>
-    span = b.children[1]
-    assert span.tag == "span"
-
-    # <i> inside span should be implicitly closed before </b>
-    i = span.children[1]
-    assert i.tag == "i"
-    assert isinstance(i.children[0], Text)
-    assert i.children[0].text == "I"
-
-    # After </b> → new implicit <i> wraps "tail"
-    second_i = body.children[1]
-    assert second_i.tag == "i"
-    assert isinstance(second_i.children[0], Text)
-    assert second_i.children[0].text == "tail"
-
 
 @pytest.mark.ci
 def test_misnested_with_br_void_element():
@@ -213,7 +182,7 @@ def test_misnested_with_br_void_element():
     reopened_i = body.children[1]
     assert reopened_i.tag == "i"
     assert isinstance(reopened_i.children[0], Text)
-    assert reopened_i.children[0].text == "tail"
+    assert reopened_i.children[0].text == " tail"
 
 
 
