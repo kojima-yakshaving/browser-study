@@ -88,3 +88,132 @@ def test_quote_handling_in_attributes():
     assert a_tag.attributes.get('title') == 'Example "Site"'
     assert isinstance(a_tag.children[0], Text)
     assert a_tag.children[0].text == 'Link'
+
+####
+# Mismatched Tags Tests 
+####
+
+@pytest.mark.ci
+def test_misnested_simple_b_i():
+    # <b>Bold <i>both</b> italic</i>
+    content = "<b>Bold <i>both</b> italic</i>"
+    parser = HTMLParser(body=content)
+    dom = parser.parse()
+
+    body = dom.children[0]
+    assert body.tag == "body"
+
+    # <b> should contain: "Bold ", <i>both</i>
+    b = body.children[0]
+    assert b.tag == "b"
+    assert isinstance(b.children[0], Text)
+    assert b.children[0].text == "Bold "
+
+    # implicit <i> opened after </b>
+    i1 = b.children[1]
+    assert isinstance(i1, Element)
+    assert i1.tag == "i"
+    assert isinstance(i1.children[0], Text)
+    assert i1.children[0].text == "both"
+
+    # after </b>, parser must reopen <i>
+    i2 = body.children[1]
+    assert i2.tag == "i"
+    assert isinstance(i2.children[0], Text)
+    assert i2.children[0].text == "italic"
+
+
+@pytest.mark.ci
+def test_misnested_three_levels_b_i_u():
+    content = "<b>A <i>B <u>C</b> D</i> E</u>"
+    parser = HTMLParser(body=content)
+    dom = parser.parse()
+
+    body = dom.children[0]
+    assert body.tag == "body"
+
+    # <b> should wrap the initial segment
+    b = body.children[0]
+    assert b.tag == "b"
+    assert isinstance(b.children[0], Text)
+    assert b.children[0].text.strip() == "A"
+
+    # Inside <b> → <i>
+    i = b.children[1]
+    assert i.tag == "i"
+
+    # Inside <i> → <u>
+    u = i.children[1]
+    assert u.tag == "u"
+
+    # <u> contains "C"
+    assert isinstance(u.children[0], Text)
+    assert u.children[0].text == "C"
+
+
+@pytest.mark.ci
+def test_misnested_with_span_non_formatting():
+    content = "<b>B <span>S <i>I</b> tail</i></span>"
+    parser = HTMLParser(body=content)
+    dom = parser.parse()
+
+    body = dom.children[0]
+    assert body.tag == "body"
+
+    # First element must be <b>
+    b = body.children[0]
+    assert b.tag == "b"
+
+    # <span> stays inside <b>
+    span = b.children[1]
+    assert span.tag == "span"
+
+    # <i> inside span should be implicitly closed before </b>
+    i = span.children[1]
+    assert i.tag == "i"
+    assert isinstance(i.children[0], Text)
+    assert i.children[0].text == "I"
+
+    # After </b> → new implicit <i> wraps "tail"
+    second_i = body.children[1]
+    assert second_i.tag == "i"
+    assert isinstance(second_i.children[0], Text)
+    assert second_i.children[0].text == "tail"
+
+
+@pytest.mark.ci
+def test_misnested_with_br_void_element():
+    content = "<b>bold <i>mid <br> brtag</b> tail</i>"
+    parser = HTMLParser(body=content)
+    dom = parser.parse()
+
+    body = dom.children[0]
+    assert body.tag == "body"
+
+    b = body.children[0]
+    assert b.tag == "b"
+
+    # b → children: "bold ", <i>..., implicit </i>, etc.
+    assert isinstance(b.children[0], Text)
+    assert "bold" in b.children[0].text
+
+    # <i> inside <b>
+    i = b.children[1]
+    assert i.tag == "i"
+
+    # Ensure <br> stays inside <i>
+    br = i.children[1]
+    assert br.tag == "br"
+
+    # The text after br should be inside the same <i>
+    assert isinstance(i.children[2], Text)
+    assert "brtag" in i.children[2].text
+
+    # After </b> → implicit <i> wraps "tail"
+    reopened_i = body.children[1]
+    assert reopened_i.tag == "i"
+    assert isinstance(reopened_i.children[0], Text)
+    assert reopened_i.children[0].text == "tail"
+
+
+
