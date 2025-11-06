@@ -74,8 +74,15 @@ class HTMLParser:
         'link', 'meta', 'script', 'style', 'title'
     ]
 
+    TEXT_STYLE_TAGS = [
+        'b', 'big', 'i', 'small', 'tt', 'abbr', 'acronym', 'cite', 'code', 'u', 'span',
+    ]
+
+    CLOSING_TEXT_STYLE_TAGS = list(f'/{tag}' for tag in TEXT_STYLE_TAGS)
+
     body: str = ""
     unfinished: list[Element] = field(default_factory=list)
+    implicit_opening_tags: list[str] = field(default_factory=list)
 
 
     def parse(self) -> Element:
@@ -101,6 +108,12 @@ class HTMLParser:
 
         return self.finish()
 
+    def add_implicit_opening_tags(self) -> None:
+        tags = reversed(self.implicit_opening_tags)
+        self.implicit_opening_tags = []
+        for tag in tags:
+            self.add_tag(tag)
+
     def implicit_tags(self, tag: str | None) -> None:
         while True:
             open_tags = [node.tag for node in self.unfinished]
@@ -115,10 +128,38 @@ class HTMLParser:
             elif open_tags == ['html', 'head'] \
                     and tag not in ['/head'] + self.HEAD_TAGS:
                 self.add_tag('/head')
-            elif len(open_tags) > 0 and open_tags[-1] == 'p' and tag == 'p':
-                self.add_tag('/p')
-            elif len(open_tags) > 0 and open_tags[-1] == 'li' and tag == 'li':
-                self.add_tag('/li')
+            elif open_tags == ['html', 'body'] \
+                   and tag is not None and tag.startswith('/'):
+                break
+            elif len(open_tags) > 0:
+                if open_tags[-1] == 'p' and tag == 'p':
+                    self.add_tag('/p')
+                elif open_tags[-1] == 'li' and tag == 'li':
+                    self.add_tag('/li')
+                elif (
+                    open_tags[-1] in self.TEXT_STYLE_TAGS and 
+                    tag in self.CLOSING_TEXT_STYLE_TAGS and
+                    tag != f'/{open_tags[-1]}'
+                ):
+                    open_text_style_tags = reversed(
+                        [node.tag for node in self.unfinished 
+                         if node.tag in self.TEXT_STYLE_TAGS]
+                    )
+
+                    closable_tags: list[str] = []
+                    for open_tag in open_text_style_tags:
+                        if tag == f'/{open_tag}':
+                            break
+                        closable_tags.append(open_tag)
+                        
+                    for closable_tag in closable_tags:
+                        self.add_tag(f'/{closable_tag}')
+
+                    for closable_tag in reversed(closable_tags):
+                        self.implicit_opening_tags.append(closable_tag)
+                else:
+                    break
+
             else:
                 break           
 
@@ -149,9 +190,11 @@ class HTMLParser:
         if tag.startswith('/'):
             if len(self.unfinished) == 1:
                 return
+            self.implicit_tags(tag)
             node = self.unfinished.pop()
             parent = self.unfinished[-1]
             parent.children.append(node)
+            self.add_implicit_opening_tags()
         elif tag in SELF_CLOSING_TAGS:
             parent = self.unfinished[-1] if self.unfinished else None
             node = Element(tag=tag, parent=parent, attributes=attributes)
