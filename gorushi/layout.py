@@ -1,7 +1,8 @@
 import tkinter.font
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Literal, final, override
 
+from gorushi.command import DrawCommand, DrawRect, DrawText
 from gorushi.constants import (
     DEFAULT_HEIGHT, DEFAULT_HORIZONTAL_PADDING, DEFAULT_HSTEP, DEFAULT_VERTICAL_PADDING, DEFAULT_VSTEP, DEFAULT_WIDTH
 )
@@ -93,33 +94,199 @@ class BufferLine:
         return context
 
 
-@dataclass
-class Layout:
-    cursor_x: float = DEFAULT_HSTEP
-    cursor_y: float = DEFAULT_VSTEP + DEFAULT_VERTICAL_PADDING
+BLOCK_ELEMENTS = [
+    'html', 'body', 'article', 'section', 'nav', 'aside',
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hgroup', 'header', 
+    'footer', 'address', 'p', 'hr', 'pre', 'blockquote', 
+    'ol', 'ul', 'menu', 'li', 'dl', 'dt', 'dd', 'figure',
+    'figcaption', 'main', 'div', 'table', 'form', 'fieldset',
+    'legend', 'details', 'summary'
+]
 
-    is_ltr: bool = True
+
+@dataclass
+class BaseLayout:
+    display_list: list[tuple[float,float,str, tkinter.font.Font]] = field(default_factory=list)
+    children: list['BaseLayout'] = field(default_factory=list)
+
+    x: float = 0.0
+    y: float = 0.0
 
     width: float = DEFAULT_WIDTH
     height: float = DEFAULT_HEIGHT
 
-    hstep: float = DEFAULT_HSTEP 
+    hstep: float = DEFAULT_HSTEP
     vstep: float = DEFAULT_VSTEP
+
+    is_ltr: bool = True
+
+    def paint(self) -> list[DrawCommand]:
+        return []
+
+    def layout(self):
+        pass
+
+
+@dataclass 
+class Layout(BaseLayout):
+    node: Node | None = None 
+    parent : BaseLayout | None = None
+    previous: BaseLayout | None = None
+
+    display_list: list[tuple[float,float,str, tkinter.font.Font]] = field(default_factory=list)
+
+
+@final
+@dataclass
+class DocumentLayout(Layout):
+    @override
+    def layout(self):
+        child = BlockLayout(
+            node=self.node,
+            parent=self,
+            previous=None 
+        )
+        self.children.append(child)
+
+        self.width = DEFAULT_WIDTH - 2*DEFAULT_HORIZONTAL_PADDING
+        self.x = DEFAULT_HORIZONTAL_PADDING
+        self.y = DEFAULT_VERTICAL_PADDING
+        child.layout()
+        self.height = child.height
+
+        if self.node:
+            print_tree(self.node)
+
+    @override
+    def paint(self) -> list[DrawCommand]:
+        return []
+
+
+@final
+@dataclass 
+class BlockLayout(Layout):
+    cursor_x: float = DEFAULT_HSTEP
+    cursor_y: float = DEFAULT_VSTEP + DEFAULT_VERTICAL_PADDING
 
     nodes: Node | None = None
 
     size: int = 12
-
     font_weight: Literal["normal", "bold"] = "normal"
     style: Literal["italic", "roman"] = "roman"
 
-    display_list: list[tuple[float,float,str, tkinter.font.Font]] = field(default_factory=list)
-    line: list[tuple[float, str, tkinter.font.Font]] = field(default_factory=list)
     buffer_line: BufferLine = field(default_factory=BufferLine)
 
     pre_tag_depth: int = 0
 
     small_caps: bool = False
+
+
+    def layout_mode(self) -> str:
+        if isinstance(self.node, Text):
+            return "inline"
+        elif self.node and any(
+            [isinstance(child, Element) and \
+            child.tag in BLOCK_ELEMENTS
+            for child in self.node.children if self.node]
+        ):
+            return 'block'
+        elif self.node and self.node.children:
+            return 'inline'
+
+        return "block"
+
+    @override
+    def layout(self) -> None:
+        # Setup x, y, width
+        if self.previous:
+            self.y = self.previous.y + self.previous.height
+        else:
+            if self.parent:
+                self.y = self.parent.y
+
+        if self.parent:
+            self.x = self.parent.x
+            self.width = self.parent.width
+
+        # Determine layout mode
+        mode = self.layout_mode()
+
+        # Perform layout
+        if mode == "block":
+            previous = None
+            if self.node is None:
+                return 
+            for child in self.node.children:
+                next_child = BlockLayout(
+                    node = child,
+                    parent = self,
+                    previous = previous 
+                )
+                self.children.append(next_child)
+                previous = next_child
+        else:
+            self.cursor_x = self.indented_horizontal_start()
+            self.cursor_y = 0
+            self.font_weight = "normal"
+            self.style = "roman"
+            self.size = 12 
+
+            self.buffer_line = BufferLine()
+            if self.node:
+                self.recurse(self.node)
+            self.flush()
+
+        for child in self.children:
+            child.layout()
+
+        # Calculate height
+        if mode == "block":
+            total_height = 0.0
+            for child in self.children:
+                total_height += child.height
+            self.height = total_height
+        else:
+            self.height = self.cursor_y
+
+    @override
+    def paint(self) -> list[DrawCommand]:
+        cmds: list[DrawCommand] = []
+        lines: dict[float, list[tuple[float, str, tkinter.font.Font]]] = {}
+        if self.layout_mode() == "inline": 
+            alternative_words: list[tuple[float, float, str, tkinter.font.Font]] = []
+            start_x = DEFAULT_HORIZONTAL_PADDING if self.is_ltr else self.width - DEFAULT_HORIZONTAL_PADDING
+
+            emoji_positions: list[tuple[float, float, str]] = []            
+
+            for x, y, word, font in self.display_list:
+                pass
+
+            for x, y, word, font in self.display_list:
+                left = x
+                word_length = font_measurer.measure(font, word)
+                right = left + word_length
+                bottom  = y + font.metrics("linespace")
+                cmds.append(
+                    DrawText(
+                        left=x,
+                        right=right,
+                        top=y,
+                        bottom=bottom,
+                        text=word,
+                        font=font
+                    )
+                )
+        if isinstance(self.node, Element) and self.node.tag == "pre":
+            x2, y2 = self.x + self.width, self.y + self.height
+            rect = DrawRect(
+                left=self.x, 
+                top=self.y,
+                right=x2,
+                bottom=y2,
+                color="gray"
+            )
+            cmds.append(rect)
+        return cmds           
 
     @property
     def interpolate_width(self) -> float:
@@ -302,10 +469,14 @@ class Layout:
             return
 
         upper_bound, lower_bound = self.buffer_line.calculate_bounds()
-        baseline = self.cursor_y + upper_bound
+        baseline = self.y + self.cursor_y + upper_bound
 
-        for (x, relative_y, word, font) in self.buffer_line.words:
-            self.display_list.append((x, baseline + relative_y, word, font))
+        for (rel_x, relative_y, word, font) in self.buffer_line.words:
+            x = self.x + rel_x
+            y = baseline + relative_y
+            self.display_list.append(
+                (x, y, word, font)
+            )
 
         line_height = upper_bound - lower_bound
         self.cursor_y += int(line_height)
@@ -334,14 +505,12 @@ class Layout:
         self.buffer_line.clear()
         self.buffer_line.reset()
 
-    def layout(self, nodes: Node) -> \
-        list[tuple[float,float,str, tkinter.font.Font]]:
-        self.reset()
-        self.flush()
 
-        print_tree(nodes)
-        self.recurse(nodes)
-        
-        self.flush()
+def paint_tree(
+    layout_object: BaseLayout, 
+    display_list: list[DrawCommand]
+) -> None:
+    display_list.extend(layout_object.paint())
 
-        return self.display_list
+    for child in layout_object.children:
+        paint_tree(child, display_list)

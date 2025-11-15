@@ -4,12 +4,13 @@ import tkinter.font
 from typing import ClassVar
 import os
 
+from gorushi.command import DrawCommand
 from gorushi.connection import Connection
 from gorushi.constants import (
     DEFAULT_HEIGHT, DEFAULT_HORIZONTAL_PADDING, DEFAULT_HSTEP, DEFAULT_VERTICAL_PADDING, DEFAULT_VSTEP, DEFAULT_WIDTH
 )
 from gorushi.font_measure_cache import font_measurer
-from gorushi.layout import Layout
+from gorushi.layout import DocumentLayout, Layout, paint_tree
 from gorushi.parser import HTMLParser, HTMLViewSourceParser
 from gorushi.renderer import RenderMode, Renderer
 from gorushi.url import URL
@@ -107,7 +108,7 @@ class Browser:
     SCROLL_DOWN: ClassVar[int] = 100
 
     content: str = ""
-    display_list: list[tuple[float,float,str,tkinter.font.Font]] = []
+    display_list: list[DrawCommand] = []
 
     scroll_height: float = 0
 
@@ -115,6 +116,8 @@ class Browser:
     center_align: bool = False
 
     view_source: bool = False
+
+    document: Layout | None = None
 
     def __init__(
         self,
@@ -156,18 +159,23 @@ class Browser:
         self.width = e.width
         self.height = e.height
 
-        layout_instance = Layout(
-            width = self.width,
-            height = self.height,
-            hstep = self.hstep,
-            vstep = self.vstep,
-        )
         if self.view_source:
             nodes = HTMLViewSourceParser(self.content).parse()
         else:
             nodes = HTMLParser(self.content).parse()
-        self.display_list = layout_instance.layout(nodes)
 
+        self.document = DocumentLayout(
+            width = self.width,
+            height = self.height,
+            hstep = self.hstep,
+            vstep = self.vstep,
+            is_ltr = self.is_ltr,
+            node = nodes,
+        )
+        self.document.layout()
+
+        self.display_list = []
+        paint_tree(self.document, self.display_list)
 
         self.draw()
 
@@ -186,82 +194,85 @@ class Browser:
         time_start = time()
         self.canvas.delete("all")
 
-        drawable_words: list[tuple[float, float, str, tkinter.font.Font]] = []
-        for x, y, word, font in self.display_list:
-            # padding from bottom
-            if y + DEFAULT_VERTICAL_PADDING + self.vstep > self.scroll + self.height:
+        drawable_commands: list[DrawCommand] = []
+        for cmd in self.display_list:
+            if cmd.top + DEFAULT_VERTICAL_PADDING + DEFAULT_VSTEP > self.scroll + self.height:
                 continue
-            # padding from top
-            if y - DEFAULT_VERTICAL_PADDING < self.scroll:
+            if cmd.bottom < self.scroll:
                 continue
-            drawable_words.append((x, y, word, font))
 
-        alternative_drawable_words: list[tuple[float, float, str, tkinter.font.Font]] = []
-        start_x = DEFAULT_HORIZONTAL_PADDING if self.is_ltr else self.width - DEFAULT_HORIZONTAL_PADDING
+            drawable_commands.append(cmd)
 
-        emoji_positions: list[tuple[float, float, str]] = []
+        for cmd in drawable_commands:
+            cmd.execute(self.scroll, self.canvas)
 
-        for x, y, word, font in drawable_words:
-            # calculrate exact positions of emojis in the word
-            current_x = x
-            for c in word:
-                if c in emoji_map:
-                    emoji_positions.append((current_x, y, c))
-                    current_x += self.hstep
-                else:
-                    current_x += self.hstep
-
-            alternative_word = [
-                c if c not in emoji_map else " " for c in word
-            ]
-            alternative_drawable_words.append(
-                (x, y, "".join(alternative_word), font)
-            )
-
-        line_width: dict[float, float] = {}
-        for x, y, word, font in alternative_drawable_words:
-            if y not in line_width:
-                line_width[y] = 0
-            line_width[y] += font_measurer.measure(font,word)
-            line_width[y] += font_measurer.measure(font, " ")
-
-        for x, y, word, font in alternative_drawable_words:
-            x_pos: float = x + DEFAULT_HORIZONTAL_PADDING
-            if not self.is_ltr:
-                x_pos = start_x - (line_width[y]) + x - self.hstep - DEFAULT_HORIZONTAL_PADDING
-            if self.center_align:
-                x_pos = (self.width - line_width[y]) / 2 - DEFAULT_HORIZONTAL_PADDING + x
-
-            _ = self.canvas.create_text(
-                x_pos,
-                y - self.scroll,
-                text=word,
-                font=font,
-                fill="black",
-                anchor="nw"
-            )
-
-        for x, y, c in emoji_positions:
-            x_pos: float = x + DEFAULT_HORIZONTAL_PADDING
-            if not self.is_ltr:
-                x_pos = start_x - (line_width[y]) + x - self.hstep - DEFAULT_HORIZONTAL_PADDING
-            if self.center_align:
-                x_pos = (self.width - line_width[y]) / 2 - DEFAULT_HORIZONTAL_PADDING + x
-            
-            try:
-                self.canvas.create_image(
-                    x_pos,
-                    y - self.scroll,
-                    image=load_emoji_image(emoji_map[c]),
-                    anchor="nw"
-                )
-            except Exception:
-                _ = self.canvas.create_text(
-                    x_pos,
-                    y - self.scroll,
-                    text=c,
-                    anchor="nw"
-                )
+        # return 
+        # alternative_drawable_words: list[tuple[float, float, str, tkinter.font.Font]] = []
+        # start_x = DEFAULT_HORIZONTAL_PADDING if self.is_ltr else self.width - DEFAULT_HORIZONTAL_PADDING
+        #
+        # emoji_positions: list[tuple[float, float, str]] = []
+        #
+        # for x, y, word, font in drawable_words:
+        #     # calculrate exact positions of emojis in the word
+        #     current_x = x
+        #     for c in word:
+        #         if c in emoji_map:
+        #             emoji_positions.append((current_x, y, c))
+        #             current_x += self.hstep
+        #         else:
+        #             current_x += self.hstep
+        #
+        #     alternative_word = [
+        #         c if c not in emoji_map else " " for c in word
+        #     ]
+        #     alternative_drawable_words.append(
+        #         (x, y, "".join(alternative_word), font)
+        #     )
+        #
+        # line_width: dict[float, float] = {}
+        # for x, y, word, font in alternative_drawable_words:
+        #     if y not in line_width:
+        #         line_width[y] = 0
+        #     line_width[y] += font_measurer.measure(font,word)
+        #     line_width[y] += font_measurer.measure(font, " ")
+        #
+        # for x, y, word, font in alternative_drawable_words:
+        #     x_pos: float = x + DEFAULT_HORIZONTAL_PADDING
+        #     if not self.is_ltr:
+        #         x_pos = start_x - (line_width[y]) + x - self.hstep - DEFAULT_HORIZONTAL_PADDING
+        #     if self.center_align:
+        #         x_pos = (self.width - line_width[y]) / 2 - DEFAULT_HORIZONTAL_PADDING + x
+        #
+        #     _ = self.canvas.create_text(
+        #         x_pos,
+        #         y - self.scroll,
+        #         text=word,
+        #         font=font,
+        #         fill="black",
+        #         anchor="nw"
+        #     )
+        #
+        # for x, y, c in emoji_positions:
+        #     x_pos: float = x + DEFAULT_HORIZONTAL_PADDING
+        #     if not self.is_ltr:
+        #         x_pos = start_x - (line_width[y]) + x - self.hstep - DEFAULT_HORIZONTAL_PADDING
+        #     if self.center_align:
+        #         x_pos = (self.width - line_width[y]) / 2 - DEFAULT_HORIZONTAL_PADDING + x
+        #
+        #     try:
+        #         self.canvas.create_image(
+        #             x_pos,
+        #             y - self.scroll,
+        #             image=load_emoji_image(emoji_map[c]),
+        #             anchor="nw"
+        #         )
+        #     except Exception:
+        #         _ = self.canvas.create_text(
+        #             x_pos,
+        #             y - self.scroll,
+        #             text=c,
+        #             anchor="nw"
+        #         )
 
         # Draw scrollbar
         if self.scroll_height > self.height:
@@ -288,22 +299,26 @@ class Browser:
             body = ""
         self.content = body
         self.view_source = url.view_source
-
-        layout_instance = Layout(
-            width = self.width,
-            height = self.height,
-            hstep = self.hstep,
-            vstep = self.vstep,
-            is_ltr = self.is_ltr,
-        )
         
         if self.view_source:
             nodes = HTMLViewSourceParser(self.content).parse()
         else:
             nodes = HTMLParser(self.content).parse()
-        self.display_list = layout_instance.layout(nodes)
 
-        cursor_y: float = self.display_list[-1][1] if self.display_list else 0
+        self.document = DocumentLayout(
+            width = self.width,
+            height = self.height,
+            hstep = self.hstep,
+            vstep = self.vstep,
+            is_ltr = self.is_ltr,
+            node = nodes,
+        )
+        self.document.layout()
+
+        # self.display_list = []
+        paint_tree(self.document, self.display_list)
+
+        cursor_y = self.document.height
         self.scroll_height = cursor_y + DEFAULT_VERTICAL_PADDING + 2 * self.vstep
 
         self.draw()
