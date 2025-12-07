@@ -50,11 +50,12 @@ class DrawRect(DrawCommand):
     color: str = "black"
 
     def execute(self, scroll: float, canvas: Canvas) -> None:
+        color, stipple = self.color.split('_') if '_' in self.color else (self.color, None)
         _ = canvas.create_rectangle(
             self.left,
             self.top - scroll,
             self.right,
             self.bottom - scroll,
             width=0,
-            fill=self.color,
+            fill=color,
         )

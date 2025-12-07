@@ -251,16 +251,44 @@ class BlockLayout(Layout):
     @override
     def paint(self) -> list[DrawCommand]:
         cmds: list[DrawCommand] = []
-        lines: dict[float, list[tuple[float, str, tkinter.font.Font]]] = {}
-        if self.layout_mode() == "inline": 
-            alternative_words: list[tuple[float, float, str, tkinter.font.Font]] = []
-            start_x = DEFAULT_HORIZONTAL_PADDING if self.is_ltr else self.width - DEFAULT_HORIZONTAL_PADDING
 
-            emoji_positions: list[tuple[float, float, str]] = []            
+        gray_stippled = "gray"
 
-            for x, y, word, font in self.display_list:
-                pass
+        # Draw background rectangles FIRST so they appear behind text
+        if isinstance(self.node, Element) and self.node.tag == "pre":
+            x1 = self.x
+            y1 = self.y - self.height * 0.5
+            x2 = x1 + self.width
+            y2 = y1 + self.height
+            rect = DrawRect(
+                left=x1,
+                top=y1,
+                right=x2,
+                bottom=y2,
+                color=gray_stippled
+            )
+            cmds.append(rect)
 
+        if (
+            isinstance(self.node, Element)
+            and self.node.tag == 'nav'
+            and self.node.attributes.get("class") == "links"
+        ):
+            x1 = self.x
+            y1 = self.y - self.height * 0.5
+            x2 = x1 + self.width
+            y2 = y1 + self.height
+            rect = DrawRect(
+                left=x1,
+                top=y1,
+                right=x2,
+                bottom=y2,
+                color=gray_stippled
+            )
+            cmds.append(rect)
+
+        # Draw text AFTER background rectangles
+        if self.layout_mode() == "inline":
             for x, y, word, font in self.display_list:
                 left = x
                 word_length = font_measurer.measure(font, word)
@@ -276,16 +304,7 @@ class BlockLayout(Layout):
                         font=font
                     )
                 )
-        if isinstance(self.node, Element) and self.node.tag == "pre":
-            x2, y2 = self.x + self.width, self.y + self.height
-            rect = DrawRect(
-                left=self.x, 
-                top=self.y,
-                right=x2,
-                bottom=y2,
-                color="gray"
-            )
-            cmds.append(rect)
+
         return cmds           
 
     @property
