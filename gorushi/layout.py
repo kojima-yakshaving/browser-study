@@ -287,6 +287,12 @@ class BlockLayout(Layout):
             )
             cmds.append(rect)
 
+        if (
+            isinstance(self.node, Element)
+            and self.node.tag == "head"
+        ):
+            return []
+
         # Draw text AFTER background rectangles
         if self.layout_mode() == "inline":
             for x, y, word, font in self.display_list:
