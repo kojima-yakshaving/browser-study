@@ -217,11 +217,24 @@ class BlockLayout(Layout):
             if self.node is None:
                 return 
             for child in self.node.children:
+                if (
+                    isinstance(child, Element)
+                    and child.tag == "nav"
+                    and child.attributes.get("id") == "toc"
+                ):
+                    # Prepend "Table of Contents" header with gray background
+                    toc_header = Element(
+                        tag="pre",
+                        children=[Text(text="Table of Contents")]
+                    )
+                    child.children.insert(0, toc_header)
+
                 next_child = BlockLayout(
                     node = child,
                     parent = self,
                     previous = previous 
                 )
+
                 self.children.append(next_child)
                 previous = next_child
         else:
