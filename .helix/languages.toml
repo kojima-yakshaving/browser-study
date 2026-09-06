@@ -1,0 +1,17 @@
+# Project-local Helix language config (merged over ~/.config/helix/languages.toml)
+# https://docs.helix-editor.com/languages.html
+
+[language-server.pyrefly]
+command = "uv"
+args = ["run", "pyrefly", "lsp"]
+
+[language-server.ruff]
+command = "uv"
+args = ["run", "ruff", "server"]
+
+[[language]]
+name = "python"
+language-servers = ["pyrefly", "ruff"]
+auto-format = true
+formatter = { command = "uv", args = ["run", "ruff", "format", "-"] }
+rulers = [79]

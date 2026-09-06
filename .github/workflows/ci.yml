@@ -16,3 +16,15 @@ jobs:
 
       - name: Run CI test suite
         run: uv run --with pytest pytest -m ci
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+
+      - name: Run pyrefly
+        run: uv run pyrefly check

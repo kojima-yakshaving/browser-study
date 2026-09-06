@@ -1,0 +1,33 @@
+// Folder-specific settings
+// https://zed.dev/docs/configuring-zed#settings-files
+{
+  "lsp": {
+    "pyrefly": {
+      "binary": {
+        "path": "uv",
+        "arguments": ["run", "pyrefly", "lsp"]
+      },
+      "settings": {
+        "python": {
+          "pythonPath": ".venv/bin/python"
+        }
+      }
+    },
+    "ruff": {
+      "binary": {
+        "path": "uv",
+        "arguments": ["run", "ruff", "server"]
+      }
+    }
+  },
+  "languages": {
+    "Python": {
+      "language_servers": ["pyrefly", "ruff", "!pyright", "!basedpyright", "!pylsp"],
+      "code_actions_on_format": {
+        "source.fixAll.pyrefly": true,
+        "source.organizeImports.ruff": true
+      }
+    }
+  },
+  "wrap_guides": [79]
+}

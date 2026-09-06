@@ -1,6 +1,6 @@
 from datetime import datetime
 from math import ceil
-from typing import AsyncGenerator, Optional
+from typing import Iterator, Optional
 
 import gzip
 
@@ -19,7 +19,7 @@ app.add_middleware(
 )
 
 
-def chunk_bytes(data: bytes, chunk_size: int = 16) -> AsyncGenerator[bytes, None]:
+def chunk_bytes(data: bytes, chunk_size: int = 16) -> Iterator[bytes]:
     """Yield compressed data in small chunks to resemble chunked transfer encoding."""
     for index in range(0, len(data), chunk_size):
         yield data[index : index + chunk_size]

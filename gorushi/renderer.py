@@ -112,7 +112,7 @@ class AhoCorasickMatcher:
             
             # Follow failure links until we find a match or reach root
             while node != self.root and char not in node.children:
-                node = node.failure_link
+                node = node.failure_link or self.root
             
             if char in node.children:
                 node = node.children[char]
