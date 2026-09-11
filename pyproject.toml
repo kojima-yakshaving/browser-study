@@ -29,10 +29,16 @@ extend-select = ["E501", "D100", "D101", "D102", "D103", "D104", "D106"]
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
+[tool.pydoclint]
+style = "google"
+arg-type-hints-in-docstring = false
+check-return-types = false
+
 [dependency-groups]
 dev = [
     "fastapi>=0.120.0",
     "pre-commit>=4.6.2",
+    "pydoclint>=0.9.1",
     "pyrefly>=1.2.0",
     "pytest>=8.4.2",
     "pytest-watch>=4.2.0",
