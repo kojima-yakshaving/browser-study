@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: gorushi-docstrings
+        name: Require docstrings on new/changed gorushi definitions
+        entry: uv run python scripts/check_new_docstrings.py
+        language: system
+        files: ^gorushi/.*\.py$

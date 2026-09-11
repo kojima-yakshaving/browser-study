@@ -16,11 +16,23 @@ dev = [
 line-length = 79
 
 [tool.ruff.lint]
-extend-select = ["E501"]
+extend-select = ["E501", "D100", "D101", "D102", "D103", "D104", "D106"]
+# D105 (magic methods) and D107 (__init__) are self-evident; skip them.
+
+[tool.ruff.lint.per-file-ignores]
+# Docstring enforcement only applies to the gorushi package for now.
+"main.py" = ["D100", "D101", "D102", "D103", "D104", "D106"]
+"server.py" = ["D100", "D101", "D102", "D103", "D104", "D106"]
+"tests/*" = ["D100", "D101", "D102", "D103", "D104", "D106"]
+"demo/**" = ["D100", "D101", "D102", "D103", "D104", "D106"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
 
 [dependency-groups]
 dev = [
     "fastapi>=0.120.0",
+    "pre-commit>=4.6.2",
     "pyrefly>=1.2.0",
     "pytest>=8.4.2",
     "pytest-watch>=4.2.0",
