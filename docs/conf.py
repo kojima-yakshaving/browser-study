@@ -41,5 +41,5 @@ intersphinx_mapping = {
 myst_enable_extensions = ["colon_fence"]
 
 # -- HTML output ---------------------------------------------------------
-html_theme = "furo"
+html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
