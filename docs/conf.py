@@ -3,6 +3,9 @@ from __future__ import annotations
 import os
 import sys
 
+from docutils import nodes
+from sphinx.util.docutils import SphinxDirective
+
 sys.path.insert(0, os.path.abspath(".."))
 
 project = "Gorushi"
@@ -61,6 +64,32 @@ def copy_demo_pages(app, exception):
     copy_asset(DEMO_DIR, os.path.join(app.outdir, "demo"))
 
 
+def demo_page_names():
+    """Return the HTML file names under demo/, sorted."""
+    return sorted(
+        name for name in os.listdir(DEMO_DIR) if name.endswith(".html")
+    )
+
+
+class DemoListDirective(SphinxDirective):
+    """Render a bullet list linking to every HTML file under demo/."""
+
+    def run(self):
+        """Build the list nodes from the current demo/ contents."""
+        items = []
+        for name in demo_page_names():
+            link = nodes.reference("", name, refuri=f"demo/{name}")
+            items.append(nodes.list_item("", nodes.paragraph("", "", link)))
+        return [nodes.bullet_list("", *items)]
+
+
+def outdate_demo_list(app, env, added, changed, removed):
+    """Re-read pages using demo-list so new demo files show up."""
+    return [doc for doc in ("demos",) if doc in env.found_docs]
+
+
 def setup(app):
-    """Register the demo-page copy step with Sphinx."""
+    """Register the demo directive and copy step with Sphinx."""
+    app.add_directive("demo-list", DemoListDirective)
+    app.connect("env-get-outdated", outdate_demo_list)
     app.connect("build-finished", copy_demo_pages)
