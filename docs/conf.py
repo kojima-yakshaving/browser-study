@@ -43,3 +43,24 @@ myst_enable_extensions = ["colon_fence"]
 # -- HTML output ---------------------------------------------------------
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
+
+# -- Demo pages ------------------------------------------------------------
+# The sample HTML pages under demo/ (repo root) are published verbatim at
+# <site>/demo/ so the toy browser can load them over HTTP from GitHub Pages.
+DEMO_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "demo")
+)
+
+
+def copy_demo_pages(app, exception):
+    """Copy demo/ into the HTML output root after a successful build."""
+    if exception is not None or app.builder.name != "html":
+        return
+    from sphinx.util.fileutil import copy_asset
+
+    copy_asset(DEMO_DIR, os.path.join(app.outdir, "demo"))
+
+
+def setup(app):
+    """Register the demo-page copy step with Sphinx."""
+    app.connect("build-finished", copy_demo_pages)

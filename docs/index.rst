@@ -9,3 +9,4 @@ Gorushi
    :caption: Contents
 
    api/index
+   demos
