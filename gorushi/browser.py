@@ -7,7 +7,12 @@ import os
 from gorushi.command import DrawCommand
 from gorushi.connection import Connection
 from gorushi.constants import (
-    DEFAULT_HEIGHT, DEFAULT_HORIZONTAL_PADDING, DEFAULT_HSTEP, DEFAULT_VERTICAL_PADDING, DEFAULT_VSTEP, DEFAULT_WIDTH
+    DEFAULT_HEIGHT,
+    DEFAULT_HORIZONTAL_PADDING,
+    DEFAULT_HSTEP,
+    DEFAULT_VERTICAL_PADDING,
+    DEFAULT_VSTEP,
+    DEFAULT_WIDTH,
 )
 from gorushi.font_measure_cache import font_measurer
 from gorushi.layout import DocumentLayout, Layout, paint_tree
@@ -15,24 +20,30 @@ from gorushi.parser import HTMLParser, HTMLViewSourceParser
 from gorushi.renderer import RenderMode, Renderer
 from gorushi.url import URL
 
+
 def get_project_root() -> str:
     import os
+
     # iterate until we find the project root (.git)
     parent = ""
     while True:
         if os.path.exists(os.path.join(parent, ".git")):
             break
-        if os.path.abspath(parent) == os.path.abspath(os.path.join(parent, "..")):
+        if os.path.abspath(parent) == os.path.abspath(
+            os.path.join(parent, "..")
+        ):
             break
         parent = os.path.join(parent, "..")
-    # resolve to absolute path 
+    # resolve to absolute path
     return os.path.abspath(parent)
+
 
 project_root = get_project_root()
 
+
 def build_emoji_map() -> dict[str, str]:
     """
-    Build a mapping from emoji characters to their corresponding 
+    Build a mapping from emoji characters to their corresponding
     image file paths.
     """
     emoji_map: dict[str, str] = {}
@@ -76,12 +87,12 @@ def load_emoji_image(file_path: str) -> tkinter.PhotoImage:
     """
     if file_path in emoji_image_cache:
         return emoji_image_cache[file_path]
-    
+
     try:
         image = tkinter.PhotoImage(
             file=file_path,
         )
-        sampled_image = image.subsample(4) 
+        sampled_image = image.subsample(4)
         emoji_image_cache[file_path] = sampled_image
         return image
     except tkinter.TclError:
@@ -93,6 +104,7 @@ emoji_map = build_emoji_map()
 
 # Cache for loaded emoji images
 emoji_image_cache: dict[str, tkinter.PhotoImage] = {}
+
 
 class Browser:
     window: tkinter.Tk
@@ -125,13 +137,13 @@ class Browser:
         width: float = DEFAULT_WIDTH,
         height: float = DEFAULT_HEIGHT,
         is_ltr: bool = True,
-        center_align: bool = False
+        center_align: bool = False,
     ):
         self.window = tkinter.Tk()
         self.canvas = tkinter.Canvas(
-            self.window, 
+            self.window,
             background="white",
-            width=width, 
+            width=width,
             height=height,
         )
 
@@ -143,9 +155,9 @@ class Browser:
 
         self.canvas.pack(
             expand=True,
-            fill=tkinter.BOTH, 
+            fill=tkinter.BOTH,
         )
-        
+
         _ = self.window.bind("<Down>", self.scrolldown)
         _ = self.window.bind("<Up>", self.scrollup)
 
@@ -165,12 +177,12 @@ class Browser:
             nodes = HTMLParser(self.content).parse()
 
         self.document = DocumentLayout(
-            width = self.width,
-            height = self.height,
-            hstep = self.hstep,
-            vstep = self.vstep,
-            is_ltr = self.is_ltr,
-            node = nodes,
+            width=self.width,
+            height=self.height,
+            hstep=self.hstep,
+            vstep=self.vstep,
+            is_ltr=self.is_ltr,
+            node=nodes,
         )
         self.document.layout()
 
@@ -185,8 +197,8 @@ class Browser:
 
     def scrolldown(self, _: tkinter.Event) -> None:
         self.scroll = min(
-            self.scroll + self.SCROLL_DOWN, 
-            max(0, self.scroll_height - self.height)
+            self.scroll + self.SCROLL_DOWN,
+            max(0, self.scroll_height - self.height),
         )
         self.draw()
 
@@ -196,7 +208,10 @@ class Browser:
 
         drawable_commands: list[DrawCommand] = []
         for cmd in self.display_list:
-            if cmd.top + DEFAULT_VERTICAL_PADDING + DEFAULT_VSTEP > self.scroll + self.height:
+            if (
+                cmd.top + DEFAULT_VERTICAL_PADDING + DEFAULT_VSTEP
+                > self.scroll + self.height
+            ):
                 continue
             if cmd.bottom < self.scroll:
                 continue
@@ -206,7 +221,7 @@ class Browser:
         for cmd in drawable_commands:
             cmd.execute(self.scroll, self.canvas)
 
-        # return 
+        # return
         # alternative_drawable_words: list[tuple[float, float, str, tkinter.font.Font]] = []
         # start_x = DEFAULT_HORIZONTAL_PADDING if self.is_ltr else self.width - DEFAULT_HORIZONTAL_PADDING
         #
@@ -279,39 +294,38 @@ class Browser:
             scrollbar_height = 30
             scrollbar_y = self.scroll * self.height // self.scroll_height
             _ = self.canvas.create_rectangle(
-                self.width - 10, 
-                scrollbar_y, 
-                self.width, 
-                scrollbar_y + scrollbar_height, 
-                fill="blue"
+                self.width - 10,
+                scrollbar_y,
+                self.width,
+                scrollbar_y + scrollbar_height,
+                fill="blue",
             )
 
         end_time = time()
         print(f"Draw time: {end_time - time_start:.4f} seconds")
 
-
     def load(self, url: URL):
         body = ""
-        if url.scheme != 'about':
-            connection = Connection(http_options={'http_version': '1.1'})
+        if url.scheme != "about":
+            connection = Connection(http_options={"http_version": "1.1"})
             body = connection.request(url=url)
         else:
             body = ""
         self.content = body
         self.view_source = url.view_source
-        
+
         if self.view_source:
             nodes = HTMLViewSourceParser(self.content).parse()
         else:
             nodes = HTMLParser(self.content).parse()
 
         self.document = DocumentLayout(
-            width = self.width,
-            height = self.height,
-            hstep = self.hstep,
-            vstep = self.vstep,
-            is_ltr = self.is_ltr,
-            node = nodes,
+            width=self.width,
+            height=self.height,
+            hstep=self.hstep,
+            vstep=self.vstep,
+            is_ltr=self.is_ltr,
+            node=nodes,
         )
         self.document.layout()
 
@@ -319,7 +333,8 @@ class Browser:
         paint_tree(self.document, self.display_list)
 
         cursor_y = self.document.height
-        self.scroll_height = cursor_y + DEFAULT_VERTICAL_PADDING + 2 * self.vstep
+        self.scroll_height = (
+            cursor_y + DEFAULT_VERTICAL_PADDING + 2 * self.vstep
+        )
 
         self.draw()
-
