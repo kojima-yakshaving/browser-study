@@ -4,7 +4,14 @@ from typing import Literal, final, override
 
 from gorushi.command import DrawCommand, DrawRect, DrawText
 from gorushi.constants import (
-    DEFAULT_HEIGHT, DEFAULT_HORIZONTAL_PADDING, DEFAULT_HSTEP, DEFAULT_VERTICAL_PADDING, DEFAULT_VSTEP, DEFAULT_WIDTH
+    DEFAULT_HEIGHT,
+    DEFAULT_HORIZONTAL_PADDING,
+    DEFAULT_HSTEP,
+    DEFAULT_VERTICAL_PADDING,
+    DEFAULT_VSTEP,
+    DEFAULT_WIDTH,
+    DEFAULT_FONT_SIZE,
+    FONT_SIZE_STEPPER,
 )
 from gorushi.font_measure_cache import font_measurer
 from gorushi.node import Element, Node, Text
@@ -12,15 +19,15 @@ from gorushi.parser import print_tree
 
 
 FONT_CACHE: dict[
-    tuple[float, str, str],
-    tuple[tkinter.font.Font, tkinter.Label | None]
+    tuple[float, str, str], tuple[tkinter.font.Font, tkinter.Label | None]
 ] = {}
 
 SOFT_HYPHEN = "-"
 
 PRE_TAG_INDENT = 20
 
-@dataclass 
+
+@dataclass
 class VerticalAlignContext:
     restore_size: float = 12.0
     relative_baseline_y: float = 0.0
@@ -28,9 +35,11 @@ class VerticalAlignContext:
     style: Literal["italic", "roman"] = "roman"
 
 
-@dataclass 
+@dataclass
 class BufferLine:
-    words: list[tuple[float, float, str, tkinter.font.Font]] = field(default_factory=list)
+    words: list[tuple[float, float, str, tkinter.font.Font]] = field(
+        default_factory=list
+    )
     baseline: float = 0.0
     current_baseline: float = 0.0
 
@@ -52,7 +61,7 @@ class BufferLine:
         return self.context_stack[-1].relative_baseline_y
 
     def add_word(
-        self, 
+        self,
         *,
         x: float,
         font: tkinter.font.Font,
@@ -95,19 +104,52 @@ class BufferLine:
 
 
 BLOCK_ELEMENTS = [
-    'html', 'body', 'article', 'section', 'nav', 'aside',
-    'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hgroup', 'header', 
-    'footer', 'address', 'p', 'hr', 'pre', 'blockquote', 
-    'ol', 'ul', 'menu', 'li', 'dl', 'dt', 'dd', 'figure',
-    'figcaption', 'main', 'div', 'table', 'form', 'fieldset',
-    'legend', 'details', 'summary'
+    "html",
+    "body",
+    "article",
+    "section",
+    "nav",
+    "aside",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "hgroup",
+    "header",
+    "footer",
+    "address",
+    "p",
+    "hr",
+    "pre",
+    "blockquote",
+    "ol",
+    "ul",
+    "menu",
+    "li",
+    "dl",
+    "dt",
+    "dd",
+    "figure",
+    "figcaption",
+    "main",
+    "div",
+    "table",
+    "form",
+    "fieldset",
+    "legend",
+    "details",
+    "summary",
 ]
 
 
 @dataclass
 class BaseLayout:
-    display_list: list[tuple[float,float,str, tkinter.font.Font]] = field(default_factory=list)
-    children: list['BaseLayout'] = field(default_factory=list)
+    display_list: list[tuple[float, float, str, tkinter.font.Font]] = field(
+        default_factory=list
+    )
+    children: list["BaseLayout"] = field(default_factory=list)
 
     x: float = 0.0
     y: float = 0.0
@@ -127,13 +169,15 @@ class BaseLayout:
         pass
 
 
-@dataclass 
+@dataclass
 class Layout(BaseLayout):
-    node: Node | None = None 
-    parent : BaseLayout | None = None
+    node: Node | None = None
+    parent: BaseLayout | None = None
     previous: BaseLayout | None = None
 
-    display_list: list[tuple[float,float,str, tkinter.font.Font]] = field(default_factory=list)
+    display_list: list[tuple[float, float, str, tkinter.font.Font]] = field(
+        default_factory=list
+    )
 
 
 @final
@@ -141,14 +185,10 @@ class Layout(BaseLayout):
 class DocumentLayout(Layout):
     @override
     def layout(self):
-        child = BlockLayout(
-            node=self.node,
-            parent=self,
-            previous=None 
-        )
+        child = BlockLayout(node=self.node, parent=self, previous=None)
         self.children.append(child)
 
-        self.width = DEFAULT_WIDTH - 2*DEFAULT_HORIZONTAL_PADDING
+        self.width = DEFAULT_WIDTH - 2 * DEFAULT_HORIZONTAL_PADDING
         self.x = DEFAULT_HORIZONTAL_PADDING
         self.y = DEFAULT_VERTICAL_PADDING
         child.layout()
@@ -163,14 +203,14 @@ class DocumentLayout(Layout):
 
 
 @final
-@dataclass 
+@dataclass
 class BlockLayout(Layout):
     cursor_x: float = DEFAULT_HSTEP
     cursor_y: float = DEFAULT_VSTEP + DEFAULT_VERTICAL_PADDING
 
     nodes: Node | None = None
 
-    size: int = 12
+    size: int = DEFAULT_FONT_SIZE
     font_weight: Literal["normal", "bold"] = "normal"
     style: Literal["italic", "roman"] = "roman"
 
@@ -180,18 +220,19 @@ class BlockLayout(Layout):
 
     small_caps: bool = False
 
-
     def layout_mode(self) -> str:
         if isinstance(self.node, Text):
             return "inline"
         elif self.node and any(
-            [isinstance(child, Element) and \
-            child.tag in BLOCK_ELEMENTS
-            for child in self.node.children if self.node]
+            [
+                isinstance(child, Element) and child.tag in BLOCK_ELEMENTS
+                for child in self.node.children
+                if self.node
+            ]
         ):
-            return 'block'
+            return "block"
         elif self.node and self.node.children:
-            return 'inline'
+            return "inline"
 
         return "block"
 
@@ -215,7 +256,7 @@ class BlockLayout(Layout):
         if mode == "block":
             previous = None
             if self.node is None:
-                return 
+                return
             for child in self.node.children:
                 if (
                     isinstance(child, Element)
@@ -224,15 +265,12 @@ class BlockLayout(Layout):
                 ):
                     # Prepend "Table of Contents" header with gray background
                     toc_header = Element(
-                        tag="pre",
-                        children=[Text(text="Table of Contents")]
+                        tag="pre", children=[Text(text="Table of Contents")]
                     )
                     child.children.insert(0, toc_header)
 
                 next_child = BlockLayout(
-                    node = child,
-                    parent = self,
-                    previous = previous 
+                    node=child, parent=self, previous=previous
                 )
 
                 self.children.append(next_child)
@@ -242,7 +280,7 @@ class BlockLayout(Layout):
             self.cursor_y = 0
             self.font_weight = "normal"
             self.style = "roman"
-            self.size = 12 
+            self.size = DEFAULT_FONT_SIZE
 
             self.buffer_line = BufferLine()
             if self.node:
@@ -274,17 +312,13 @@ class BlockLayout(Layout):
             x2 = x1 + self.width
             y2 = y1 + self.height
             rect = DrawRect(
-                left=x1,
-                top=y1,
-                right=x2,
-                bottom=y2,
-                color=gray_stippled
+                left=x1, top=y1, right=x2, bottom=y2, color=gray_stippled
             )
             cmds.append(rect)
 
         if (
             isinstance(self.node, Element)
-            and self.node.tag == 'nav'
+            and self.node.tag == "nav"
             and self.node.attributes.get("class") == "links"
         ):
             x1 = self.x
@@ -292,18 +326,11 @@ class BlockLayout(Layout):
             x2 = x1 + self.width
             y2 = y1 + self.height
             rect = DrawRect(
-                left=x1,
-                top=y1,
-                right=x2,
-                bottom=y2,
-                color=gray_stippled
+                left=x1, top=y1, right=x2, bottom=y2, color=gray_stippled
             )
             cmds.append(rect)
 
-        if (
-            isinstance(self.node, Element)
-            and self.node.tag == "head"
-        ):
+        if isinstance(self.node, Element) and self.node.tag == "head":
             return []
 
         # Draw text AFTER background rectangles
@@ -312,7 +339,7 @@ class BlockLayout(Layout):
                 left = x
                 word_length = font_measurer.measure(font, word)
                 right = left + word_length
-                bottom  = y + font.metrics("linespace")
+                bottom = y + font.metrics("linespace")
                 cmds.append(
                     DrawText(
                         left=x,
@@ -320,18 +347,18 @@ class BlockLayout(Layout):
                         top=y,
                         bottom=bottom,
                         text=word,
-                        font=font
+                        font=font,
                     )
                 )
 
-        return cmds           
+        return cmds
 
     @property
     def interpolate_width(self) -> float:
         return self.width - 2 * self.hstep - 2 * DEFAULT_HORIZONTAL_PADDING * 2
 
     def indented_horizontal_start(self) -> float:
-        if not self.is_ltr: 
+        if not self.is_ltr:
             return self.hstep
         return self.hstep + (self.pre_tag_depth * PRE_TAG_INDENT)
 
@@ -341,7 +368,7 @@ class BlockLayout(Layout):
                 lines = tree.text.splitlines(keepends=True)
                 for line in lines:
                     self.process_word(line)
-                    if line.endswith('\n'):
+                    if line.endswith("\n"):
                         self.flush()
             else:
                 for word in tree.text.split():
@@ -372,8 +399,8 @@ class BlockLayout(Layout):
                             part = word
                             remainder = ""
                         else:
-                            part = word[:i-1] + SOFT_HYPHEN
-                            remainder = SOFT_HYPHEN + word[i-1:]
+                            part = word[: i - 1] + SOFT_HYPHEN
+                            remainder = SOFT_HYPHEN + word[i - 1 :]
                         break
                 if remainder:
                     self.buffer_line.add_word(
@@ -384,7 +411,7 @@ class BlockLayout(Layout):
                     word = remainder
             self.flush()
             self.cursor_x = self.indented_horizontal_start()
-        
+
         self.buffer_line.add_word(
             x=self.cursor_x,
             font=font,
@@ -398,65 +425,73 @@ class BlockLayout(Layout):
         elif tag == "b":
             self.font_weight = "bold"
         elif tag == "small":
-            self.size -= 2 
+            self.size -= FONT_SIZE_STEPPER
         elif tag == "big":
-            self.size += 4
+            self.size += 2 * FONT_SIZE_STEPPER
         elif tag == "abbr":
-            self.size -= 2
-            self.small_caps = True 
-        elif tag == 'sup':
-            current_font = self.get_font(self.size, self.font_weight, self.style)
+            self.size -= FONT_SIZE_STEPPER
+            self.small_caps = True
+        elif tag == "sup":
+            current_font = self.get_font(
+                self.size, self.font_weight, self.style
+            )
             metrics = current_font.metrics()
             ascent = metrics["ascent"]
-            baseline_y = self.buffer_line.previous_baseline - int(ascent * 0.25)
+            baseline_y = self.buffer_line.previous_baseline - int(
+                ascent * 0.25
+            )
             self.buffer_line.add_context(
                 VerticalAlignContext(
                     restore_size=self.size,
                     relative_baseline_y=baseline_y,
                     weight=self.font_weight,
-                    style=self.style
+                    style=self.style,
                 )
             )
             previous_size = self.size
             self.size = int(previous_size * 0.75)
-        elif tag == "sub": 
-            current_font = self.get_font(self.size, self.font_weight, self.style)
+        elif tag == "sub":
+            current_font = self.get_font(
+                self.size, self.font_weight, self.style
+            )
             metrics = current_font.metrics()
             descent = metrics["descent"]
-            baseline_y = self.buffer_line.previous_baseline + int(descent * 0.25)
+            baseline_y = self.buffer_line.previous_baseline + int(
+                descent * 0.25
+            )
             self.buffer_line.add_context(
                 VerticalAlignContext(
                     restore_size=self.size,
                     relative_baseline_y=baseline_y,
                     weight=self.font_weight,
-                    style=self.style
+                    style=self.style,
                 )
             )
             previous_size = self.size
             self.size = int(previous_size * 0.75)
-        elif tag == 'br':
+        elif tag == "br":
             self.flush()
             self.cursor_y += self.vstep
-        elif tag == 'pre':
+        elif tag == "pre":
             self.flush()
             self.pre_tag_depth += 1
-        elif tag == 'h1':
+        elif tag == "h1":
             self.flush()
-            self.size = 24
+            self.size = DEFAULT_FONT_SIZE + FONT_SIZE_STEPPER * 8
             self.cursor_y += self.vstep
-        elif tag == 'h2':
+        elif tag == "h2":
             self.flush()
-            self.size = 20
-            self.cursor_y += self.vstep 
-        elif tag == 'h3':
-            self.flush()
-            self.size = 16
-            self.cursor_y += self.vstep 
-        elif tag == 'h4':
-            self.flush()
-            self.size = 14
+            self.size = DEFAULT_FONT_SIZE + FONT_SIZE_STEPPER * 4
             self.cursor_y += self.vstep
-        pass 
+        elif tag == "h3":
+            self.flush()
+            self.size = DEFAULT_FONT_SIZE + FONT_SIZE_STEPPER * 2
+            self.cursor_y += self.vstep
+        elif tag == "h4":
+            self.flush()
+            self.size = DEFAULT_FONT_SIZE + FONT_SIZE_STEPPER
+            self.cursor_y += self.vstep
+        pass
 
     def close_tag(self, tag: str):
         if tag == "i":
@@ -464,57 +499,55 @@ class BlockLayout(Layout):
         elif tag == "b":
             self.font_weight = "normal"
         elif tag == "small":
-            self.size += 2
+            self.size += FONT_SIZE_STEPPER
         elif tag == "big":
-            self.size -= 4
+            self.size -= 2 * FONT_SIZE_STEPPER
         elif tag == "abbr":
-            self.size += 2
+            self.size += FONT_SIZE_STEPPER
             self.small_caps = False
-        elif tag == 'sup':
+        elif tag == "sup":
             context = self.buffer_line.pop_context()
             self.size = int(context.restore_size)
-        elif tag == 'sub':
+        elif tag == "sub":
             context = self.buffer_line.pop_context()
             self.size = int(context.restore_size)
         elif tag == "p":
             self.flush()
             self.cursor_y += self.vstep
-        elif tag == 'pre':
+        elif tag == "pre":
             self.flush()
             self.pre_tag_depth = max(0, self.pre_tag_depth - 1)
-        elif tag == 'blockqoute':
+        elif tag == "blockqoute":
             self.flush()
             self.cursor_y += self.vstep
-        elif tag == 'h1':
+        elif tag == "h1":
             self.flush()
-            self.size = 12
+            self.size = DEFAULT_FONT_SIZE
             self.cursor_y += self.vstep
-        elif tag == 'h2':
+        elif tag == "h2":
             self.flush()
-            self.size = 12
-            self.cursor_y += self.vstep 
-        elif tag == 'h3':
-            self.flush()
-            self.size = 12
+            self.size = DEFAULT_FONT_SIZE
             self.cursor_y += self.vstep
-        elif tag == 'h4':
+        elif tag == "h3":
             self.flush()
-            self.size = 12
+            self.size = DEFAULT_FONT_SIZE
+            self.cursor_y += self.vstep
+        elif tag == "h4":
+            self.flush()
+            self.size = DEFAULT_FONT_SIZE
             self.cursor_y += self.vstep
 
     def flush(self):
-        if self.buffer_line.is_empty(): 
+        if self.buffer_line.is_empty():
             return
 
         upper_bound, lower_bound = self.buffer_line.calculate_bounds()
         baseline = self.y + self.cursor_y + upper_bound
 
-        for (rel_x, relative_y, word, font) in self.buffer_line.words:
+        for rel_x, relative_y, word, font in self.buffer_line.words:
             x = self.x + rel_x
             y = baseline + relative_y
-            self.display_list.append(
-                (x, y, word, font)
-            )
+            self.display_list.append((x, y, word, font))
 
         line_height = upper_bound - lower_bound
         self.cursor_y += int(line_height)
@@ -522,18 +555,16 @@ class BlockLayout(Layout):
 
         self.buffer_line.clear()
 
-    def get_font(self, 
-        size: int, 
-        weight: Literal['normal', 'bold'], 
-        style: Literal['italic', 'roman']
+    def get_font(
+        self,
+        size: int,
+        weight: Literal["normal", "bold"],
+        style: Literal["italic", "roman"],
     ) -> tkinter.font.Font:
         key = (size, weight, style)
         if key not in FONT_CACHE:
             font = tkinter.font.Font(
-                family="Arial",
-                size=size, 
-                weight=weight,
-                slant=style
+                family="Arial", size=size, weight=weight, slant=style
             )
             # label = tkinter.Label(font=font)
             FONT_CACHE[key] = (font, None)
@@ -545,8 +576,7 @@ class BlockLayout(Layout):
 
 
 def paint_tree(
-    layout_object: BaseLayout, 
-    display_list: list[DrawCommand]
+    layout_object: BaseLayout, display_list: list[DrawCommand]
 ) -> None:
     display_list.extend(layout_object.paint())
 
