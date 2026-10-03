@@ -154,6 +154,9 @@ class BaseLayout:
     x: float = 0.0
     y: float = 0.0
 
+    screen_width: float = DEFAULT_WIDTH
+    screen_height: float = DEFAULT_HEIGHT
+
     width: float = DEFAULT_WIDTH
     height: float = DEFAULT_HEIGHT
 
@@ -188,7 +191,7 @@ class DocumentLayout(Layout):
         child = BlockLayout(node=self.node, parent=self, previous=None)
         self.children.append(child)
 
-        self.width = DEFAULT_WIDTH - 2 * DEFAULT_HORIZONTAL_PADDING
+        self.width = self.screen_width - 2 * DEFAULT_HORIZONTAL_PADDING
         self.x = DEFAULT_HORIZONTAL_PADDING
         self.y = DEFAULT_VERTICAL_PADDING
         child.layout()

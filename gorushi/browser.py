@@ -177,6 +177,7 @@ class Browser:
             nodes = HTMLParser(self.content).parse()
 
         self.document = DocumentLayout(
+            screen_width=self.width,
             width=self.width,
             height=self.height,
             hstep=self.hstep,
@@ -320,6 +321,7 @@ class Browser:
             nodes = HTMLParser(self.content).parse()
 
         self.document = DocumentLayout(
+            screen_width=self.width,
             width=self.width,
             height=self.height,
             hstep=self.hstep,
