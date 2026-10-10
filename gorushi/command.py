@@ -18,6 +18,7 @@ class DrawCommand:
         for cmd in drawable_commands:
             cmd.execute(self.scroll, self.canvas)
     """
+
     top: float
     left: float
     bottom: float = 0.0
@@ -32,6 +33,7 @@ class DrawText(DrawCommand):
     """
     Draw text onto tkinter Canvas
     """
+
     text: str = ""
     font: Font | None = None
 
@@ -52,6 +54,7 @@ class DrawEmoji(DrawCommand):
     """
     Draw emoji image onto tkinter Canvas
     """
+
     image: tkinter.PhotoImage | None = None
 
     @override
@@ -66,6 +69,7 @@ class DrawRect(DrawCommand):
     """
     Draw rectangle onto tkinter Canvas
     """
+
     color: str = "black"
 
     def execute(self, scroll: float, canvas: Canvas) -> None:

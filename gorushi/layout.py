@@ -1,6 +1,6 @@
 import tkinter.font
 from dataclasses import dataclass, field
-from typing import Literal, final, override
+from typing import Literal, final, override, cast
 
 from gorushi.command import DrawCommand, DrawRect, DrawText
 from gorushi.constants import (
@@ -12,6 +12,8 @@ from gorushi.constants import (
     DEFAULT_WIDTH,
     DEFAULT_FONT_SIZE,
     FONT_SIZE_STEPPER,
+    UL_LEFT_MARGIN,
+    LI_DISC_SIZE,
 )
 from gorushi.font_measure_cache import font_measurer
 from gorushi.node import Element, Node, Text
@@ -220,6 +222,7 @@ class BlockLayout(Layout):
     buffer_line: BufferLine = field(default_factory=BufferLine)
 
     pre_tag_depth: int = 0
+    margin_left: int = 0
 
     small_caps: bool = False
 
@@ -260,6 +263,9 @@ class BlockLayout(Layout):
             previous = None
             if self.node is None:
                 return
+            if self.node and self.node.tag == "ul":
+                self.recurse(self.node)
+
             for child in self.node.children:
                 if (
                     isinstance(child, Element)
@@ -272,14 +278,19 @@ class BlockLayout(Layout):
                     )
                     child.children.insert(0, toc_header)
 
+                margin_left = self.margin_left + (
+                    UL_LEFT_MARGIN if self.node.tag == "ul" else 0
+                )
                 next_child = BlockLayout(
-                    node=child, parent=self, previous=previous
+                    node=child,
+                    parent=self,
+                    previous=previous,
+                    margin_left=margin_left,
                 )
 
                 self.children.append(next_child)
                 previous = next_child
         else:
-            self.cursor_x = self.indented_horizontal_start()
             self.cursor_y = 0
             self.font_weight = "normal"
             self.style = "roman"
@@ -338,14 +349,31 @@ class BlockLayout(Layout):
 
         # Draw text AFTER background rectangles
         if self.layout_mode() == "inline":
+            current_layout = cast(BlockLayout, self)
+            parent_layout = cast(BlockLayout, self.parent)
+            start_x = 0
+            if (current_layout.node and current_layout.node.tag == "li") or (
+                parent_layout.node and parent_layout.node.tag == "li"
+            ):
+                start_x = self.cursor_x + self.margin_left
+                cmds.append(
+                    DrawRect(
+                        left=start_x,
+                        right=start_x + LI_DISC_SIZE,
+                        top=self.y - (self.vstep / 4.0),
+                        bottom=self.y - (self.vstep / 4.0) + LI_DISC_SIZE,
+                        color="black",
+                    )
+                )
+
             for x, y, word, font in self.display_list:
-                left = x
+                left = x + start_x
                 word_length = font_measurer.measure(font, word)
                 right = left + word_length
                 bottom = y + font.metrics("linespace")
                 cmds.append(
                     DrawText(
-                        left=x,
+                        left=left,
                         right=right,
                         top=y,
                         bottom=bottom,
@@ -363,7 +391,10 @@ class BlockLayout(Layout):
     def indented_horizontal_start(self) -> float:
         if not self.is_ltr:
             return self.hstep
-        return self.hstep + (self.pre_tag_depth * PRE_TAG_INDENT)
+        start_x = (
+            self.x + (self.pre_tag_depth * PRE_TAG_INDENT) + self.margin_left
+        )
+        return start_x
 
     def recurse(self, tree: Node):
         if isinstance(tree, Text):
@@ -478,6 +509,8 @@ class BlockLayout(Layout):
         elif tag == "pre":
             self.flush()
             self.pre_tag_depth += 1
+
+        # Handles heading element
         elif tag == "h1":
             self.flush()
             self.size = DEFAULT_FONT_SIZE + FONT_SIZE_STEPPER * 8
@@ -494,7 +527,11 @@ class BlockLayout(Layout):
             self.flush()
             self.size = DEFAULT_FONT_SIZE + FONT_SIZE_STEPPER
             self.cursor_y += self.vstep
-        pass
+
+        # Handles unordered list
+        elif tag == "ul":
+            self.flush()
+            self.cursor_y += self.vstep
 
     def close_tag(self, tag: str):
         if tag == "i":
@@ -523,6 +560,8 @@ class BlockLayout(Layout):
         elif tag == "blockqoute":
             self.flush()
             self.cursor_y += self.vstep
+
+        # Handles heading element
         elif tag == "h1":
             self.flush()
             self.size = DEFAULT_FONT_SIZE
@@ -539,6 +578,10 @@ class BlockLayout(Layout):
             self.flush()
             self.size = DEFAULT_FONT_SIZE
             self.cursor_y += self.vstep
+
+        # Handles unordered list
+        elif tag == "ul":
+            self.flush()
 
     def flush(self):
         if self.buffer_line.is_empty():
