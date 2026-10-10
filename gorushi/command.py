@@ -7,6 +7,17 @@ from typing import override
 
 @dataclass
 class DrawCommand:
+    """
+    Abstract base class rendering process,
+    Inherited classes are including drawing some shape onto tkinter's canvas
+
+    Implementation and its application is based on `Command` pattern
+
+    .. code-block:: python
+
+        for cmd in drawable_commands:
+            cmd.execute(self.scroll, self.canvas)
+    """
     top: float
     left: float
     bottom: float = 0.0
@@ -18,6 +29,9 @@ class DrawCommand:
 
 @dataclass
 class DrawText(DrawCommand):
+    """
+    Draw text onto tkinter Canvas
+    """
     text: str = ""
     font: Font | None = None
 
@@ -35,6 +49,9 @@ class DrawText(DrawCommand):
 
 @dataclass
 class DrawEmoji(DrawCommand):
+    """
+    Draw emoji image onto tkinter Canvas
+    """
     image: tkinter.PhotoImage | None = None
 
     @override
@@ -46,6 +63,9 @@ class DrawEmoji(DrawCommand):
 
 @dataclass
 class DrawRect(DrawCommand):
+    """
+    Draw rectangle onto tkinter Canvas
+    """
     color: str = "black"
 
     def execute(self, scroll: float, canvas: Canvas) -> None:
