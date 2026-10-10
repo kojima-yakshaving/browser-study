@@ -4,6 +4,19 @@ import tkinter.font
 
 @dataclass
 class FontMeasurer:
+    """
+    On each platform (Windows, macOS, Linux, etc.),
+    the Tcl/Tk GUI engine relies on a different native function
+    to measure text for a given font.
+
+    For example, on macOS, Tk calls Core Text directly to measure text.
+    On Linux, measurement goes through the X server,
+    which adds round-trip latency to every call.
+
+    By introducing a FontMeasurer with an in-memory cache,
+    we can reduce measurement cost and keep results consistent across
+    platforms.
+    """
     cache: dict[tuple[float, str, str, str], dict[str, float]] = field(default_factory=dict)
     fixed_cjk_width: dict[tuple[float, str, str, str], float] = field(default_factory=dict)
 
